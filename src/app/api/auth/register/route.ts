@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import prisma from "@/lib/prisma";
-import { GradeLevel, UserRole } from "@prisma/client";
+import { isValidGradeLevel, isValidUserRole } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     // Check if role is valid
-    if (!Object.values(UserRole).includes(role)) {
+    if (!isValidUserRole(role)) {
       return NextResponse.json(
         { error: "유효하지 않은 역할입니다." },
         { status: 400 }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     // Check if grade level is valid for students
-    if (role === "STUDENT" && gradeLevel && !Object.values(GradeLevel).includes(gradeLevel)) {
+    if (role === "STUDENT" && gradeLevel && !isValidGradeLevel(gradeLevel)) {
       return NextResponse.json(
         { error: "유효하지 않은 학년입니다." },
         { status: 400 }
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         name,
         email,
         password: hashedPassword,
-        role: role as UserRole,
+        role,
         gradeLevel: role === "STUDENT" ? gradeLevel : null,
         profile: {
           create: {

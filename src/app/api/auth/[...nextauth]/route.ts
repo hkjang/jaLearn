@@ -4,7 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import prisma from "@/lib/prisma";
-import { UserRole, GradeLevel } from "@prisma/client";
+import type { UserRole, GradeLevel } from "@/lib/utils";
 
 declare module "next-auth" {
   interface Session {
@@ -68,8 +68,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
-          gradeLevel: user.gradeLevel,
+          role: user.role as UserRole,
+          gradeLevel: user.gradeLevel as GradeLevel | null,
           image: user.image,
         };
       },
@@ -81,7 +81,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    signUp: "/register",
     error: "/login",
   },
   callbacks: {

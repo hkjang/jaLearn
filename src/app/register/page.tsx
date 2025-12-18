@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui";
 import { GraduationCap, Mail, Lock, User, AlertCircle, Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { GradeLevel, UserRole } from "@prisma/client";
-import { gradeLevelNames, gradeLevelShortNames } from "@/lib/utils";
+import { gradeLevelNames, gradeLevelShortNames, type GradeLevel, type UserRole } from "@/lib/utils";
 
 type Step = "role" | "info" | "grade" | "consent";
 
