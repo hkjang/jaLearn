@@ -1,0 +1,371 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// User & Authentication Models
+// ========================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String?
+  role          UserRole  @default(STUDENT)
+  gradeLevel    GradeLevel?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  profile       Profile?
+  accounts      Account[]
+  sessions      Session[]
+  enrollments   Enrollment[]
+  progress      Progress[]
+  submissions   Submission[]
+  notifications Notification[]
+  studyPlans    StudyPlan[]
+  
+  // Parent-Child relations
+  children      ParentChild[]  @relation("Parent")
+  parents       ParentChild[]  @relation("Child")
+  
+  // Teacher-managed students
+  managedStudents StudentTeacher[] @relation("Teacher")
+  teachers        StudentTeacher[] @relation("Student")
+  
+  // Content created by teacher
+  createdCourses  Course[]  @relation("CourseCreator")
+  createdLessons  Lesson[]  @relation("LessonCreator")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  school        String?
+  birthDate     DateTime?
+  phoneNumber   String?
+  parentConsent Boolean  @default(false)
+  consentDate   DateTime?
+  avatarStyle   String   @default("default")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ========================================
+// Relationship Models
+// ========================================
+
+model ParentChild {
+  id        String   @id @default(cuid())
+  parentId  String
+  childId   String
+  createdAt DateTime @default(now())
+  
+  parent User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  child  User @relation("Child", fields: [childId], references: [id], onDelete: Cascade)
+  
+  @@unique([parentId, childId])
+}
+
+model StudentTeacher {
+  id        String   @id @default(cuid())
+  studentId String
+  teacherId String
+  createdAt DateTime @default(now())
+  
+  student User @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher User @relation("Teacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  @@unique([studentId, teacherId])
+}
+
+// ========================================
+// Course & Content Models
+// ========================================
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  iconName    String   @default("book")
+  color       String   @default("#6366f1")
+  
+  courses     Course[]
+}
+
+model Course {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  thumbnail   String?
+  subjectId   String
+  gradeLevel  GradeLevel
+  isPublished Boolean     @default(false)
+  creatorId   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  subject     Subject     @relation(fields: [subjectId], references: [id])
+  creator     User        @relation("CourseCreator", fields: [creatorId], references: [id])
+  lessons     Lesson[]
+  enrollments Enrollment[]
+}
+
+model Lesson {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  order       Int         @default(0)
+  videoUrl    String?
+  videoDuration Int?      // in seconds
+  pdfUrl      String?
+  courseId    String
+  creatorId   String
+  isPublished Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator     User        @relation("LessonCreator", fields: [creatorId], references: [id])
+  questions   Question[]
+  progress    Progress[]
+}
+
+// ========================================
+// Question & Quiz Models
+// ========================================
+
+model Question {
+  id          String       @id @default(cuid())
+  lessonId    String
+  type        QuestionType @default(MULTIPLE_CHOICE)
+  content     String       // Question text (supports markdown)
+  options     String?      // JSON array for multiple choice options
+  answer      String       // Correct answer
+  explanation String?      // Explanation for the answer
+  difficulty  Difficulty   @default(MEDIUM)
+  points      Int          @default(10)
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+}
+
+model Submission {
+  id          String    @id @default(cuid())
+  userId      String
+  questionId  String
+  answer      String
+  isCorrect   Boolean
+  earnedPoints Int      @default(0)
+  timeSpent   Int?      // in seconds
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ========================================
+// Learning Progress Models
+// ========================================
+
+model Enrollment {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  enrolledAt  DateTime @default(now())
+  completedAt DateTime?
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id              String   @id @default(cuid())
+  userId          String
+  lessonId        String
+  watchedDuration Int      @default(0) // in seconds
+  isCompleted     Boolean  @default(false)
+  lastPosition    Int      @default(0) // video position in seconds
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, lessonId])
+}
+
+model StudyPlan {
+  id          String   @id @default(cuid())
+  userId      String
+  weekStart   DateTime
+  weekEnd     DateTime
+  goals       String   // JSON array of weekly goals
+  isAIGenerated Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       StudyPlanItem[]
+}
+
+model StudyPlanItem {
+  id          String     @id @default(cuid())
+  planId      String
+  title       String
+  description String?
+  dueDate     DateTime
+  isCompleted Boolean    @default(false)
+  completedAt DateTime?
+  priority    Priority   @default(MEDIUM)
+  
+  plan        StudyPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+
+// ========================================
+// Notification Models
+// ========================================
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  link        String?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ========================================
+// AI & Analytics Models
+// ========================================
+
+model LearningAnalytics {
+  id              String   @id @default(cuid())
+  userId          String
+  subjectId       String?
+  weeklyStudyTime Int      @default(0) // minutes
+  correctRate     Float    @default(0)
+  weakAreas       String?  // JSON array
+  strengths       String?  // JSON array
+  analyzedAt      DateTime @default(now())
+}
+
+model AIRecommendation {
+  id              String   @id @default(cuid())
+  userId          String
+  type            String   // "problem" | "content" | "study_plan"
+  recommendation  String   // JSON data
+  reason          String?
+  isApplied       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+// ========================================
+// Enums
+// ========================================
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+enum GradeLevel {
+  ELEMENTARY_1
+  ELEMENTARY_2
+  ELEMENTARY_3
+  ELEMENTARY_4
+  ELEMENTARY_5
+  ELEMENTARY_6
+  MIDDLE_1
+  MIDDLE_2
+  MIDDLE_3
+  HIGH_1
+  HIGH_2
+  HIGH_3
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SHORT_ANSWER
+  TRUE_FALSE
+  ESSAY
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  STUDY_REMINDER
+  ASSIGNMENT_DUE
+  PROGRESS_UPDATE
+  NEW_CONTENT
+  ACHIEVEMENT
+  SYSTEM
+}
