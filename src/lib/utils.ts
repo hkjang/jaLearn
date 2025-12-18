@@ -1,10 +1,19 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { GradeLevel } from "@prisma/client";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// User roles
+export type UserRole = "STUDENT" | "TEACHER" | "PARENT" | "ADMIN";
+
+// Grade levels
+export type GradeLevel = 
+  | "ELEMENTARY_1" | "ELEMENTARY_2" | "ELEMENTARY_3" 
+  | "ELEMENTARY_4" | "ELEMENTARY_5" | "ELEMENTARY_6"
+  | "MIDDLE_1" | "MIDDLE_2" | "MIDDLE_3"
+  | "HIGH_1" | "HIGH_2" | "HIGH_3";
 
 // Grade level display names in Korean
 export const gradeLevelNames: Record<GradeLevel, string> = {
@@ -37,6 +46,17 @@ export const gradeLevelShortNames: Record<GradeLevel, string> = {
   HIGH_2: "고2",
   HIGH_3: "고3",
 };
+
+// All grade levels
+export const gradeLevels: GradeLevel[] = [
+  "ELEMENTARY_1", "ELEMENTARY_2", "ELEMENTARY_3", 
+  "ELEMENTARY_4", "ELEMENTARY_5", "ELEMENTARY_6",
+  "MIDDLE_1", "MIDDLE_2", "MIDDLE_3",
+  "HIGH_1", "HIGH_2", "HIGH_3"
+];
+
+// All user roles
+export const userRoles: UserRole[] = ["STUDENT", "TEACHER", "PARENT", "ADMIN"];
 
 // Grade level group
 export type GradeLevelGroup = "elementary" | "middle" | "high";
@@ -133,3 +153,13 @@ export const subjectInfo = {
   social: { name: "사회", icon: "globe", color: "#F59E0B" },
   history: { name: "역사", icon: "landmark", color: "#6B7280" },
 } as const;
+
+// Check if grade level is valid
+export function isValidGradeLevel(level: string): level is GradeLevel {
+  return gradeLevels.includes(level as GradeLevel);
+}
+
+// Check if role is valid
+export function isValidUserRole(role: string): role is UserRole {
+  return userRoles.includes(role as UserRole);
+}

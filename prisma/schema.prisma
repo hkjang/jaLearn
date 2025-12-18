@@ -19,8 +19,8 @@ model User {
   email         String    @unique
   name          String
   password      String?
-  role          UserRole  @default(STUDENT)
-  gradeLevel    GradeLevel?
+  role          String    @default("STUDENT") // STUDENT, TEACHER, PARENT, ADMIN
+  gradeLevel    String?   // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
   image         String?
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
@@ -146,7 +146,7 @@ model Course {
   description String?
   thumbnail   String?
   subjectId   String
-  gradeLevel  GradeLevel
+  gradeLevel  String      // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
   isPublished Boolean     @default(false)
   creatorId   String
   createdAt   DateTime    @default(now())
@@ -185,12 +185,12 @@ model Lesson {
 model Question {
   id          String       @id @default(cuid())
   lessonId    String
-  type        QuestionType @default(MULTIPLE_CHOICE)
+  type        String       @default("MULTIPLE_CHOICE") // MULTIPLE_CHOICE, SHORT_ANSWER, TRUE_FALSE, ESSAY
   content     String       // Question text (supports markdown)
   options     String?      // JSON array for multiple choice options
   answer      String       // Correct answer
   explanation String?      // Explanation for the answer
-  difficulty  Difficulty   @default(MEDIUM)
+  difficulty  String       @default("MEDIUM") // EASY, MEDIUM, HARD
   points      Int          @default(10)
   order       Int          @default(0)
   createdAt   DateTime     @default(now())
@@ -269,7 +269,7 @@ model StudyPlanItem {
   dueDate     DateTime
   isCompleted Boolean    @default(false)
   completedAt DateTime?
-  priority    Priority   @default(MEDIUM)
+  priority    String     @default("MEDIUM") // LOW, MEDIUM, HIGH
   
   plan        StudyPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
 }
@@ -281,7 +281,7 @@ model StudyPlanItem {
 model Notification {
   id          String           @id @default(cuid())
   userId      String
-  type        NotificationType
+  type        String           // STUDY_REMINDER, ASSIGNMENT_DUE, PROGRESS_UPDATE, NEW_CONTENT, ACHIEVEMENT, SYSTEM
   title       String
   message     String
   link        String?
@@ -314,58 +314,4 @@ model AIRecommendation {
   reason          String?
   isApplied       Boolean  @default(false)
   createdAt       DateTime @default(now())
-}
-
-// ========================================
-// Enums
-// ========================================
-
-enum UserRole {
-  STUDENT
-  TEACHER
-  PARENT
-  ADMIN
-}
-
-enum GradeLevel {
-  ELEMENTARY_1
-  ELEMENTARY_2
-  ELEMENTARY_3
-  ELEMENTARY_4
-  ELEMENTARY_5
-  ELEMENTARY_6
-  MIDDLE_1
-  MIDDLE_2
-  MIDDLE_3
-  HIGH_1
-  HIGH_2
-  HIGH_3
-}
-
-enum QuestionType {
-  MULTIPLE_CHOICE
-  SHORT_ANSWER
-  TRUE_FALSE
-  ESSAY
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum NotificationType {
-  STUDY_REMINDER
-  ASSIGNMENT_DUE
-  PROGRESS_UPDATE
-  NEW_CONTENT
-  ACHIEVEMENT
-  SYSTEM
 }
