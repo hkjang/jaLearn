@@ -23,6 +23,7 @@ model User {
   gradeLevel    String?   // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
   image         String?
   emailVerified DateTime?
+  referralCode  String?   @unique // For referral system
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -47,6 +48,22 @@ model User {
   // Content created by teacher
   createdCourses  Course[]  @relation("CourseCreator")
   createdLessons  Lesson[]  @relation("LessonCreator")
+  
+  // Payment & Subscription relations
+  subscriptions   Subscription[]
+  payments        Payment[]
+  invoices        Invoice[]
+  userCoupons     UserCoupon[]
+  referralsMade   Referral[] @relation("Referrer")
+  referredBy      Referral[] @relation("Referred")
+  
+  // Instructor & Marketplace
+  instructorProfile InstructorProfile?
+  coursePurchases   CoursePurchase[]
+  
+  // AI Usage
+  aiUsage         AIUsage[]
+  userCredits     UserCredits?
 }
 
 model Account {
@@ -156,6 +173,8 @@ model Course {
   creator     User        @relation("CourseCreator", fields: [creatorId], references: [id])
   lessons     Lesson[]
   enrollments Enrollment[]
+  prices      CoursePrice[]
+  purchases   CoursePurchase[]
 }
 
 model Lesson {
@@ -315,3 +334,250 @@ model AIRecommendation {
   isApplied       Boolean  @default(false)
   createdAt       DateTime @default(now())
 }
+
+// ========================================
+// Payment & Subscription Models
+// ========================================
+
+model Plan {
+  id            String   @id @default(cuid())
+  name          String   @unique  // FREE, PREMIUM_BASIC, PREMIUM_PLUS
+  displayName   String
+  description   String?
+  price         Int      // Monthly price in KRW
+  yearlyPrice   Int?     // Yearly price (discounted)
+  features      String   // JSON array of features
+  aiQuestionsPerDay Int  @default(10)
+  problemsPerDay    Int  @default(10)
+  hasAnalytics      Boolean @default(false)
+  hasAITutor        Boolean @default(false)
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id            String   @id @default(cuid())
+  userId        String
+  planId        String
+  status        String   @default("ACTIVE") // ACTIVE, PAUSED, CANCELLED, EXPIRED
+  billingCycle  String   @default("MONTHLY") // MONTHLY, YEARLY
+  startDate     DateTime @default(now())
+  endDate       DateTime?
+  nextBillingDate DateTime?
+  autoRenew     Boolean  @default(true)
+  pausedAt      DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          Plan     @relation(fields: [planId], references: [id])
+  payments      Payment[]
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  subscriptionId String?
+  orderId       String   @unique
+  amount        Int
+  originalAmount Int?     // Before discount
+  discountAmount Int?     // Discount applied
+  couponId      String?
+  method        String   // CARD, BANK_TRANSFER, KAKAO_PAY, TOSS_PAY, NAVER_PAY
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED, PARTIAL_REFUND
+  pgProvider    String?  // TOSS, IAMPORT, etc.
+  pgTransactionId String?
+  paidAt        DateTime?
+  refundedAt    DateTime?
+  refundAmount  Int?
+  refundReason  String?
+  metadata      String?  // JSON for additional info
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription  Subscription? @relation(fields: [subscriptionId], references: [id])
+  coupon        Coupon?  @relation(fields: [couponId], references: [id])
+  invoices      Invoice[]
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  userId        String
+  paymentId     String
+  invoiceNumber String   @unique
+  type          String   // TAX_INVOICE, CASH_RECEIPT
+  amount        Int
+  taxAmount     Int      @default(0)
+  recipientName String?
+  recipientEmail String?
+  businessNumber String? // 사업자등록번호
+  issuedAt      DateTime @default(now())
+  status        String   @default("ISSUED") // ISSUED, CANCELLED
+  pdfUrl        String?
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment       Payment  @relation(fields: [paymentId], references: [id])
+}
+
+// ========================================
+// Coupon & Promotion Models
+// ========================================
+
+model Coupon {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  description   String?
+  discountType  String   // PERCENT, FIXED_AMOUNT
+  discountValue Int      // Percentage or amount
+  minPurchaseAmount Int? // Minimum purchase amount to apply
+  maxDiscountAmount Int? // Maximum discount for percentage type
+  maxUses       Int?     // Total max uses (null = unlimited)
+  usedCount     Int      @default(0)
+  maxUsesPerUser Int     @default(1)
+  validFrom     DateTime
+  validUntil    DateTime
+  planIds       String?  // JSON array of applicable plan IDs (null = all)
+  isActive      Boolean  @default(true)
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  payments      Payment[]
+  userCoupons   UserCoupon[]
+}
+
+model UserCoupon {
+  id        String   @id @default(cuid())
+  userId    String
+  couponId  String
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  
+  @@unique([userId, couponId])
+}
+
+model Referral {
+  id            String   @id @default(cuid())
+  referrerId    String   // User who referred
+  referredId    String   // User who was referred
+  referralCode  String
+  status        String   @default("PENDING") // PENDING, COMPLETED, REWARDED
+  rewardAmount  Int      @default(0)
+  rewardedAt    DateTime?
+  createdAt     DateTime @default(now())
+  
+  referrer      User     @relation("Referrer", fields: [referrerId], references: [id])
+  referred      User     @relation("Referred", fields: [referredId], references: [id])
+}
+
+// ========================================
+// Instructor & Marketplace Models
+// ========================================
+
+model InstructorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  displayName   String
+  bio           String?
+  specialties   String?  // JSON array of subject specialties
+  qualifications String? // JSON array of qualifications
+  profileImage  String?
+  bannerImage   String?
+  socialLinks   String?  // JSON object
+  isVerified    Boolean  @default(false)
+  verifiedAt    DateTime?
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED, SUSPENDED
+  rating        Float    @default(0)
+  totalStudents Int      @default(0)
+  totalEarnings Int      @default(0)
+  commissionRate Float   @default(0.3) // Platform takes 30%
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  settlements   InstructorSettlement[]
+}
+
+model InstructorSettlement {
+  id            String   @id @default(cuid())
+  instructorId  String
+  periodStart   DateTime
+  periodEnd     DateTime
+  grossAmount   Int      // Total sales
+  commissionAmount Int   // Platform commission
+  netAmount     Int      // Amount to pay instructor
+  status        String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  paidAt        DateTime?
+  bankName      String?
+  accountNumber String?
+  accountHolder String?
+  createdAt     DateTime @default(now())
+  
+  instructor    InstructorProfile @relation(fields: [instructorId], references: [id])
+}
+
+model CoursePrice {
+  id            String   @id @default(cuid())
+  courseId      String
+  priceType     String   // SINGLE, PACKAGE, SUBSCRIPTION_ONLY
+  price         Int      // Price in KRW
+  originalPrice Int?     // Original price (for showing discount)
+  validFrom     DateTime @default(now())
+  validUntil    DateTime?
+  isActive      Boolean  @default(true)
+  
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model CoursePurchase {
+  id            String   @id @default(cuid())
+  userId        String
+  courseId      String
+  paymentId     String?
+  price         Int
+  purchasedAt   DateTime @default(now())
+  expiresAt     DateTime?
+  status        String   @default("ACTIVE") // ACTIVE, EXPIRED, REFUNDED
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course        Course   @relation(fields: [courseId], references: [id])
+}
+
+// ========================================
+// AI Usage Tracking Models
+// ========================================
+
+model AIUsage {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // QUESTION, PROBLEM_GEN, ANALYSIS, TUTOR
+  tokensUsed    Int      @default(0)
+  creditsUsed   Int      @default(1)
+  date          DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, date])
+}
+
+model UserCredits {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  freeCredits   Int      @default(0)
+  paidCredits   Int      @default(0)
+  lastResetDate DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
