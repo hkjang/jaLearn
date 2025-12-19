@@ -883,6 +883,9 @@ model Problem {
   ratings       ProblemRating[]
   sharedQuestions SharedQuestion[]
   
+  // Prompt Asset System
+  problemPrompt ProblemPrompt?
+  
   @@index([subjectId, gradeLevel])
   @@index([status, reviewStage])
   @@index([sourceType])
@@ -1604,4 +1607,276 @@ model QuestionAnswer {
   user          User     @relation(fields: [userId], references: [id])
   
   createdAt     DateTime @default(now())
+}
+
+// ========================================
+// Prompt Asset System (프롬프트 자산 시스템)
+// ========================================
+
+// 프롬프트 자산 계층 구조
+model PromptAsset {
+  id            String   @id @default(cuid())
+  
+  // 계층 레벨: CORE, DOMAIN, GRADE, SUBJECT, UNIT, PROBLEM, USER_STATE
+  level         String
+  name          String
+  description   String?
+  
+  // 암호화된 프롬프트 내용
+  content       String   // 암호화 저장
+  contentHash   String?  // 무결성 검증용 해시
+  
+  // 계층 관계
+  parentId      String?
+  parent        PromptAsset? @relation("PromptHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children      PromptAsset[] @relation("PromptHierarchy")
+  
+  // 적용 조건
+  gradeLevel    String?  // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
+  subjectId     String?
+  unitId        String?
+  
+  // 상태
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  priority      Int      @default(0) // 높을수록 우선
+  
+  // 메트릭스
+  usageCount    Int      @default(0)
+  avgScore      Float?
+  
+  // Relations
+  versions      PromptVersion[]
+  problemPrompts ProblemPrompt[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([level, isActive])
+  @@index([gradeLevel, subjectId])
+  @@index([parentId])
+}
+
+// 프롬프트 버전 관리
+model PromptVersion {
+  id            String   @id @default(cuid())
+  assetId       String
+  version       Int
+  content       String   // 암호화 저장
+  changeNote    String?
+  
+  createdById   String?
+  approvedById  String?
+  approvedAt    DateTime?
+  
+  // DRAFT, PENDING, APPROVED, REJECTED, ARCHIVED
+  status        String   @default("DRAFT")
+  
+  asset         PromptAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  performances  PromptPerformance[]
+  abTestVariants ABTestVariant[]
+  approvals     PromptApproval[]
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([assetId, version])
+  @@index([status])
+  @@index([createdById])
+}
+
+// 문제별 전용 프롬프트
+model ProblemPrompt {
+  id            String   @id @default(cuid())
+  problemId     String   @unique
+  assetId       String
+  
+  // 문제 특화 정보 (암호화)
+  outcomeIntent String?  // 출제 의도
+  trapPoints    String?  // 오답 유도 포인트
+  scoringRules  String?  // 채점 기준
+  optionInfo    String?  // 보기별 설명
+  hintSequence  String?  // 힌트 시퀀스 (JSON)
+  
+  isActive      Boolean  @default(true)
+  
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  asset         PromptAsset @relation(fields: [assetId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([assetId])
+}
+
+// 프롬프트 성능 추적
+model PromptPerformance {
+  id              String   @id @default(cuid())
+  versionId       String
+  date            DateTime @default(now())
+  
+  // KPI 메트릭스
+  usageCount      Int      @default(0)
+  satisfactionAvg Float?   // 만족도 평균 (1-5)
+  understandingRate Float? // 이해도 (0-1)
+  requestionRate  Float?   // 재질문률 (낮을수록 좋음)
+  problemSolveRate Float?  // 문제 해결률
+  avgSessionDuration Float? // 평균 세션 시간 (분)
+  
+  // 품질 점수
+  qualityScore    Float?   // 종합 품질 점수 (0-100)
+  
+  version         PromptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  @@unique([versionId, date])
+  @@index([versionId, date])
+}
+
+// A/B 테스트
+model PromptABTest {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  
+  // DRAFT, RUNNING, COMPLETED, STOPPED
+  status        String   @default("DRAFT")
+  
+  // 타겟 조건
+  targetGrades  String?  // JSON 배열
+  targetSubjects String? // JSON 배열
+  sampleSize    Int?
+  percentage    Float    @default(50) // 전체 트래픽 중 테스트 비율
+  
+  startDate     DateTime?
+  endDate       DateTime?
+  
+  // 승자 정보
+  winnerId      String?  // 승자 variant ID
+  winnerReason  String?
+  
+  variants      ABTestVariant[]
+  assignments   ABTestAssignment[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([status])
+}
+
+// A/B 테스트 변형
+model ABTestVariant {
+  id            String   @id @default(cuid())
+  testId        String
+  versionId     String
+  name          String
+  allocation    Float    @default(50) // 트래픽 할당 비율 (%)
+  
+  // 결과 메트릭스
+  impressions   Int      @default(0)
+  conversions   Int      @default(0)
+  avgScore      Float?
+  
+  test          PromptABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  version       PromptVersion @relation(fields: [versionId], references: [id])
+  assignments   ABTestAssignment[]
+  
+  @@index([testId])
+  @@index([versionId])
+}
+
+// A/B 테스트 사용자 할당
+model ABTestAssignment {
+  id            String   @id @default(cuid())
+  testId        String
+  variantId     String
+  userId        String
+  
+  // 결과 추적
+  score         Float?   // 이해도/만족도 점수
+  converted     Boolean  @default(false)
+  
+  assignedAt    DateTime @default(now())
+  
+  test          PromptABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  variant       ABTestVariant @relation(fields: [variantId], references: [id])
+  
+  @@unique([testId, userId])
+  @@index([userId])
+  @@index([variantId])
+}
+
+// 프롬프트 진화 히스토리
+model PromptEvolution {
+  id              String   @id @default(cuid())
+  assetId         String
+  
+  // AUTO, MANUAL, AB_TEST_WINNER, AI_SUGGESTED
+  triggerType     String
+  triggerReason   String?
+  
+  // 변경 전후 버전
+  beforeVersionId String?
+  afterVersionId  String?
+  
+  // 성능 변화
+  scoreBefore     Float?
+  scoreAfter      Float?
+  improvement     Float?   // 개선율 (%)
+  
+  // 승인 워크플로우
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([assetId, createdAt])
+  @@index([status])
+}
+
+// 프롬프트 사용 로그 (마스킹 처리된 데이터만)
+model PromptUsageLog {
+  id            String   @id @default(cuid())
+  sessionId     String
+  versionId     String
+  
+  // 마스킹된 메타데이터
+  gradeLevel    String?
+  subjectId     String?
+  problemId     String?
+  
+  // 결과 (프롬프트 내용은 저장하지 않음)
+  qualityScore  Float?   // AI 응답 품질 (0-100)
+  userFeedback  Int?     // 사용자 피드백 (1-5)
+  reasked       Boolean  @default(false) // 재질문 여부
+  responseTime  Int?     // 응답 생성 시간 (ms)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([versionId, createdAt])
+  @@index([sessionId])
+  @@index([gradeLevel, subjectId])
+}
+
+// 프롬프트 승인 워크플로우
+model PromptApproval {
+  id            String   @id @default(cuid())
+  versionId     String
+  requesterId   String
+  
+  // PENDING, APPROVED, REJECTED
+  status        String   @default("PENDING")
+  stage         Int      @default(1) // 다단계 승인 (1=첫 번째, 2=두 번째...)
+  
+  reviewerId    String?
+  reviewNote    String?
+  reviewedAt    DateTime?
+  
+  version       PromptVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([status, stage])
+  @@index([versionId])
+  @@index([requesterId])
 }
