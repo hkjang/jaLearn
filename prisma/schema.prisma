@@ -87,6 +87,26 @@ model User {
   problemVersions        ProblemVersion[] @relation("ProblemVersionChanger")
   problemSubmissions     ProblemSubmission[] @relation("ProblemSubmissions")
   curriculumVerifications ProblemCurriculumMapping[] @relation("CurriculumVerifier")
+  
+  // Gamification & Engagement (Phase 1)
+  userStreak        UserStreak?
+  dailyChallenges   DailyChallenge[]
+  userLevel         UserLevel?
+  
+  // ClassRoom (Teacher/Student)
+  teacherClassRooms ClassRoom[] @relation("TeacherClassRooms")
+  classMemberships  ClassMember[] @relation("ClassMemberships")
+  examResults       ExamResult[] @relation("ExamResults")
+  
+  // Challenges & Rankings
+  challengerChallenges  Challenge[] @relation("ChallengerChallenges")
+  challengedChallenges  Challenge[] @relation("ChallengedChallenges")
+  rankings              Ranking[]
+  
+  // Problem Ratings & Q&A
+  problemRatings    ProblemRating[]
+  sharedQuestions   SharedQuestion[]
+  questionAnswers   QuestionAnswer[]
 }
 
 model Account {
@@ -859,6 +879,10 @@ model Problem {
   submissions   ProblemSubmission[]
   curriculumMappings ProblemCurriculumMapping[]
   
+  // Phase 1: Gamification relations
+  ratings       ProblemRating[]
+  sharedQuestions SharedQuestion[]
+  
   @@index([subjectId, gradeLevel])
   @@index([status, reviewStage])
   @@index([sourceType])
@@ -1372,4 +1396,212 @@ model KeywordRanking {
   
   @@index([keyword, date])
   @@index([path])
+}
+
+// ========================================
+// Gamification & Engagement Models (Phase 1)
+// ========================================
+
+// 스트릭 (연속 학습) 시스템
+model UserStreak {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  currentStreak  Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastActiveDate DateTime @default(now())
+  freezeCount    Int      @default(0) // 스트릭 보호권
+  totalDays      Int      @default(0)
+  
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([currentStreak])
+}
+
+// 오늘의 문제
+model DailyChallenge {
+  id            String   @id @default(cuid())
+  userId        String
+  date          DateTime @default(now())
+  problemIds    String   // JSON array
+  completedIds  String?  // JSON array
+  totalScore    Int      @default(0)
+  isCompleted   Boolean  @default(false)
+  aiGenerated   Boolean  @default(true)
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, date])
+  @@index([date])
+}
+
+// 레벨 시스템
+model UserLevel {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  level         Int      @default(1)
+  experience    Int      @default(0)
+  nextLevelExp  Int      @default(100)
+  totalProblems Int      @default(0)
+  totalCorrect  Int      @default(0)
+  rank          String   @default("BRONZE") // BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+  badges        String?  // JSON array
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 클래스룸 (교사용)
+model ClassRoom {
+  id            String   @id @default(cuid())
+  teacherId     String
+  name          String
+  description   String?
+  inviteCode    String   @unique
+  gradeLevel    String
+  subjectId     String?
+  isActive      Boolean  @default(true)
+  maxStudents   Int      @default(50)
+  
+  teacher       User     @relation("TeacherClassRooms", fields: [teacherId], references: [id])
+  members       ClassMember[]
+  exams         ClassExam[]
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([inviteCode])
+  @@index([teacherId])
+}
+
+model ClassMember {
+  id            String    @id @default(cuid())
+  classId       String
+  userId        String
+  role          String    @default("STUDENT") // STUDENT, TA
+  joinedAt      DateTime  @default(now())
+  
+  class         ClassRoom @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user          User      @relation("ClassMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([classId, userId])
+}
+
+// 시험 (교사 생성)
+model ClassExam {
+  id            String    @id @default(cuid())
+  classId       String
+  title         String
+  problemIds    String    // JSON array
+  duration      Int?      // minutes
+  startAt       DateTime?
+  endAt         DateTime?
+  pdfUrl        String?
+  isPublished   Boolean   @default(false)
+  
+  class         ClassRoom @relation(fields: [classId], references: [id], onDelete: Cascade)
+  results       ExamResult[]
+  
+  createdAt     DateTime  @default(now())
+}
+
+model ExamResult {
+  id            String    @id @default(cuid())
+  examId        String
+  userId        String
+  answers       String    // JSON object
+  score         Float?
+  submittedAt   DateTime?
+  timeSpent     Int?      // seconds
+  
+  exam          ClassExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user          User      @relation("ExamResults", fields: [userId], references: [id])
+  
+  @@unique([examId, userId])
+}
+
+// 친구 대결
+model Challenge {
+  id              String   @id @default(cuid())
+  challengerId    String
+  challengedId    String
+  problemIds      String   // JSON array
+  status          String   @default("PENDING") // PENDING, ACTIVE, COMPLETED, DECLINED
+  winnerId        String?
+  challengerScore Int      @default(0)
+  challengedScore Int      @default(0)
+  expiresAt       DateTime
+  
+  challenger      User     @relation("ChallengerChallenges", fields: [challengerId], references: [id])
+  challenged      User     @relation("ChallengedChallenges", fields: [challengedId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([challengerId])
+  @@index([challengedId])
+}
+
+// 랭킹
+model Ranking {
+  id            String   @id @default(cuid())
+  userId        String
+  period        String   // DAILY, WEEKLY, MONTHLY, ALL_TIME
+  periodKey     String   // e.g., "2024-01-15", "2024-W03"
+  scope         String   // GLOBAL, SCHOOL, REGION
+  scopeValue    String?  // school name, region name
+  score         Int      @default(0)
+  rank          Int?
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, period, periodKey, scope, scopeValue])
+  @@index([period, periodKey, scope, rank])
+}
+
+// 문제 평가
+model ProblemRating {
+  id            String   @id @default(cuid())
+  problemId     String
+  userId        String
+  rating        Int      // 1-5
+  difficulty    Int?     // 1-5 (사용자 체감 난이도)
+  helpful       Boolean?
+  comment       String?
+  
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([problemId, userId])
+  @@index([problemId])
+}
+
+// 질문 공유 (공동 풀이)
+model SharedQuestion {
+  id            String   @id @default(cuid())
+  problemId     String
+  userId        String
+  question      String
+  isResolved    Boolean  @default(false)
+  upvotes       Int      @default(0)
+  
+  problem       Problem  @relation(fields: [problemId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
+  answers       QuestionAnswer[]
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([problemId])
+}
+
+model QuestionAnswer {
+  id            String   @id @default(cuid())
+  questionId    String
+  userId        String
+  content       String
+  isAccepted    Boolean  @default(false)
+  upvotes       Int      @default(0)
+  
+  question      SharedQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id])
+  
+  createdAt     DateTime @default(now())
 }
