@@ -20,7 +20,8 @@ import {
   Users,
   Gift,
   CreditCard,
-  Shield
+  Shield,
+  FileQuestion
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
@@ -35,6 +36,7 @@ const navigationItems = [
 
 const adminItems = [
   { href: "/admin", label: "관리자홈", icon: Shield },
+  { href: "/admin/problems", label: "문제관리", icon: FileQuestion },
   { href: "/admin/ai-tutor", label: "AI 튜터관리", icon: Brain },
   { href: "/admin/revenue", label: "매출관리", icon: CreditCard },
 ];
