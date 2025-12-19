@@ -14,7 +14,13 @@ import {
   User,
   Settings,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Brain,
+  Target,
+  Users,
+  Gift,
+  CreditCard,
+  Shield
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
@@ -23,8 +29,14 @@ import { getGradeLevelGroup, gradeLevelShortNames, type GradeLevel } from "@/lib
 const navigationItems = [
   { href: "/dashboard", label: "대시보드", icon: Home },
   { href: "/courses", label: "강좌", icon: BookOpen },
-  { href: "/achievements", label: "성취", icon: Trophy },
-  { href: "/ai-tutor", label: "AI 튜터", icon: MessageCircle },
+  { href: "/ai-tutor-pro", label: "AI 튜터", icon: Brain },
+  { href: "/exam-prep", label: "시험대비", icon: Target },
+];
+
+const adminItems = [
+  { href: "/admin", label: "관리자홈", icon: Shield },
+  { href: "/admin/ai-tutor", label: "AI 튜터관리", icon: Brain },
+  { href: "/admin/revenue", label: "매출관리", icon: CreditCard },
 ];
 
 export default function Header() {
@@ -122,6 +134,22 @@ export default function Header() {
                           프로필
                         </Link>
                         <Link
+                          href="/my/subscription"
+                          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          구독 관리
+                        </Link>
+                        <Link
+                          href="/referral"
+                          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <Gift className="w-4 h-4" />
+                          친구 추천
+                        </Link>
+                        <Link
                           href="/settings"
                           className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
                           onClick={() => setIsUserMenuOpen(false)}
@@ -130,6 +158,36 @@ export default function Header() {
                           설정
                         </Link>
                       </div>
+                      {/* Admin Menu */}
+                      {session.user.role === "ADMIN" && (
+                        <div className="border-t py-1">
+                          <p className="px-4 py-1 text-xs font-medium text-muted-foreground">관리자</p>
+                          {adminItems.map((item) => (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                              onClick={() => setIsUserMenuOpen(false)}
+                            >
+                              <item.icon className="w-4 h-4" />
+                              {item.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      {/* Parent Menu */}
+                      {session.user.role === "PARENT" && (
+                        <div className="border-t py-1">
+                          <Link
+                            href="/parent/dashboard"
+                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Users className="w-4 h-4" />
+                            학부모 대시보드
+                          </Link>
+                        </div>
+                      )}
                       <div className="border-t py-1">
                         <button
                           onClick={() => signOut({ callbackUrl: "/" })}
