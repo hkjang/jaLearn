@@ -82,10 +82,11 @@ model User {
   expertConsultations ExpertConsultation[] @relation("ExpertConsultations")
   
   // Problem Bank
-  createdProblems     Problem[] @relation("ProblemCreator")
-  problemReviews      ProblemReview[] @relation("ProblemReviewer")
-  problemVersions     ProblemVersion[] @relation("ProblemVersionChanger")
-  problemSubmissions  ProblemSubmission[] @relation("ProblemSubmissions")
+  createdProblems        Problem[] @relation("ProblemCreator")
+  problemReviews         ProblemReview[] @relation("ProblemReviewer")
+  problemVersions        ProblemVersion[] @relation("ProblemVersionChanger")
+  problemSubmissions     ProblemSubmission[] @relation("ProblemSubmissions")
+  curriculumVerifications ProblemCurriculumMapping[] @relation("CurriculumVerifier")
 }
 
 model Account {
@@ -176,9 +177,10 @@ model Subject {
   iconName    String   @default("book")
   color       String   @default("#6366f1")
   
-  courses       Course[]
-  problemUnits  ProblemUnit[]
-  problems      Problem[]
+  courses             Course[]
+  problemUnits        ProblemUnit[]
+  problems            Problem[]
+  curriculumStandards CurriculumStandard[]
 }
 
 model Course {
@@ -827,10 +829,17 @@ model Problem {
   status        String   @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED, ARCHIVED
   reviewStage   String   @default("NONE")  // NONE, AUTO, AI, MANUAL, APPROVED
   
-  // 품질 메트릭
-  qualityScore  Float?            // AI 품질 점수 0-100
+  // 고도화: 품질 점수 세분화
+  qualityScore  Float?            // 종합 품질 점수 0-100
+  accuracyScore Float?            // 정답 정확성 0-100
+  clarityScore  Float?            // 문장 명확성 0-100
+  difficultyFit Float?            // 난이도 적합성 0-100
+  trustScore    Float?            // 출처 신뢰도 (등급 기반)
+  
+  // 사용 통계
   usageCount    Int      @default(0)
   correctRate   Float?            // 정답률
+  avgSolveTime  Float?            // 평균 풀이 시간 (초)
   
   // 생성 정보
   createdById   String?
@@ -848,10 +857,12 @@ model Problem {
   versions      ProblemVersion[]
   variants      ProblemVariant[]
   submissions   ProblemSubmission[]
+  curriculumMappings ProblemCurriculumMapping[]
   
   @@index([subjectId, gradeLevel])
   @@index([status, reviewStage])
   @@index([sourceType])
+  @@index([qualityScore])
 }
 
 model ProblemSource {
@@ -863,9 +874,47 @@ model ProblemSource {
   isVerified    Boolean  @default(false)
   isActive      Boolean  @default(true)
   
+  // 고도화: 출처 등급 시스템
+  grade         String   @default("D") // A, B, C, D, E
+  usageScope    String   @default("LEARNING") // LEARNING, AI_TRAINING, INTERNAL
+  trustScore    Float    @default(50) // 신뢰도 점수 0-100
+  
   problems      Problem[]
+  contracts     SourceContract[]
   
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 출처별 계약/라이선스 관리
+model SourceContract {
+  id            String   @id @default(cuid())
+  sourceId      String
+  
+  contractType  String   // LICENSE, REVENUE_SHARE, DONATION, PARTNERSHIP
+  title         String   // 계약명
+  startDate     DateTime
+  endDate       DateTime?
+  isActive      Boolean  @default(true)
+  autoBlock     Boolean  @default(true) // 만료 시 자동 차단
+  
+  // 사용 범위
+  allowLearning   Boolean @default(true)  // 학습용 허용
+  allowAITraining Boolean @default(false) // AI 학습 허용
+  allowCommercial Boolean @default(false) // 상업적 사용 허용
+  
+  revenueShare  Float?   // 수익 쉐어 비율 (%)
+  terms         String?  // JSON: 상세 계약 조건
+  documentUrl   String?  // 계약서 파일 URL
+  notes         String?  // 관리 메모
+  
+  source        ProblemSource @relation(fields: [sourceId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([sourceId, isActive])
+  @@index([endDate])
 }
 
 model ProblemUnit {
@@ -985,3 +1034,51 @@ model ProblemAuditLog {
   @@index([userId])
 }
 
+// ========================================
+// Curriculum Standard Models (교육과정 매핑)
+// ========================================
+
+model CurriculumStandard {
+  id            String   @id @default(cuid())
+  version       String   // "2015", "2022" (교육과정 버전)
+  subjectId     String
+  gradeLevel    String   // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
+  
+  code          String   // 성취기준 코드 (예: [9영01-01])
+  domain        String?  // 영역 (예: 듣기-말하기)
+  title         String   // 성취기준 제목
+  description   String?  // 상세 설명
+  keywords      String?  // JSON: 핵심 키워드 배열
+  
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  mappings      ProblemCurriculumMapping[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([version, code])
+  @@index([subjectId, gradeLevel, version])
+}
+
+model ProblemCurriculumMapping {
+  id            String   @id @default(cuid())
+  problemId     String
+  standardId    String
+  
+  confidence    Float    @default(0) // AI 매핑 신뢰도 0-1
+  mappedBy      String   // AUTO, MANUAL
+  verifiedById  String?  // 교사 승인자 ID
+  verifiedAt    DateTime?
+  
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  standard      CurriculumStandard @relation(fields: [standardId], references: [id])
+  verifiedBy    User?    @relation("CurriculumVerifier", fields: [verifiedById], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([problemId, standardId])
+  @@index([standardId])
+}
