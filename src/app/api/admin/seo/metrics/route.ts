@@ -6,6 +6,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Helper function to safely execute queries
+async function safeQuery<T>(query: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await query();
+  } catch (error) {
+    console.warn("Query failed (table may not exist):", error);
+    return fallback;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -16,33 +26,30 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    // 문제 통계
-    const [
-      totalProblems,
-      approvedProblems,
-      problemsByGrade,
-      problemsBySubject,
-      recentlyAdded,
-      sitemapEntries,
-    ] = await Promise.all([
-      // 전체 문제 수
-      prisma.problem.count(),
-      // 승인된 문제 수 (색인 가능)
-      prisma.problem.count({ where: { status: 'APPROVED' } }),
-      // 학년별 문제 수
-      prisma.problem.groupBy({
+    // 문제 통계 - 이 모델들은 존재해야 함
+    const totalProblems = await safeQuery(() => prisma.problem.count(), 0);
+    const approvedProblems = await safeQuery(() => prisma.problem.count({ where: { status: 'APPROVED' } }), 0);
+    
+    const problemsByGrade = await safeQuery(
+      () => prisma.problem.groupBy({
         by: ['gradeLevel'],
         where: { status: 'APPROVED' },
         _count: true,
       }),
-      // 과목별 문제 수
-      prisma.problem.groupBy({
+      []
+    );
+    
+    const problemsBySubject = await safeQuery(
+      () => prisma.problem.groupBy({
         by: ['subjectId'],
         where: { status: 'APPROVED' },
         _count: true,
       }),
-      // 최근 추가된 문제
-      prisma.problem.findMany({
+      []
+    );
+    
+    const recentlyAdded = await safeQuery(
+      () => prisma.problem.findMany({
         where: {
           status: 'APPROVED',
           createdAt: { gte: startDate },
@@ -54,12 +61,17 @@ export async function GET(request: NextRequest) {
           unit: { select: { name: true } },
         },
       }),
-      // 사이트맵 엔트리 수
-      prisma.sitemapEntry.count({ where: { isActive: true } }),
-    ]);
+      []
+    );
+    
+    // 새 SEO 모델들 - 아직 마이그레이션 안됐을 수 있음
+    const sitemapEntries = await safeQuery(
+      () => prisma.sitemapEntry.count({ where: { isActive: true } }),
+      0
+    );
     
     // 과목 정보 조회
-    const subjects = await prisma.subject.findMany();
+    const subjects = await safeQuery(() => prisma.subject.findMany(), []);
     const subjectMap: Record<string, string> = {};
     subjects.forEach(s => {
       subjectMap[s.id] = s.displayName;
@@ -71,29 +83,31 @@ export async function GET(request: NextRequest) {
       : 0;
     
     // SEO 메트릭스 조회 (있는 경우)
-    const seoMetrics = await prisma.sEOMetrics.findMany({
-      where: {
-        date: { gte: startDate },
-      },
-      orderBy: { date: 'desc' },
-      take: 100,
-    });
+    const seoMetrics = await safeQuery(
+      () => prisma.sEOMetrics.findMany({
+        where: { date: { gte: startDate } },
+        orderBy: { date: 'desc' },
+        take: 100,
+      }),
+      []
+    );
     
     // 집계
-    const totalImpressions = seoMetrics.reduce((sum, m) => sum + m.impressions, 0);
-    const totalClicks = seoMetrics.reduce((sum, m) => sum + m.clicks, 0);
+    const totalImpressions = seoMetrics.reduce((sum: number, m: { impressions: number }) => sum + m.impressions, 0);
+    const totalClicks = seoMetrics.reduce((sum: number, m: { clicks: number }) => sum + m.clicks, 0);
     const avgCTR = totalImpressions > 0 
       ? Math.round((totalClicks / totalImpressions) * 100 * 10) / 10 
       : 0;
     
     // 키워드 랭킹 조회
-    const topKeywords = await prisma.keywordRanking.findMany({
-      where: {
-        date: { gte: startDate },
-      },
-      orderBy: { clicks: 'desc' },
-      take: 20,
-    });
+    const topKeywords = await safeQuery(
+      () => prisma.keywordRanking.findMany({
+        where: { date: { gte: startDate } },
+        orderBy: { clicks: 'desc' },
+        take: 20,
+      }),
+      []
+    );
     
     return NextResponse.json({
       success: true,
@@ -107,23 +121,23 @@ export async function GET(request: NextRequest) {
           totalClicks,
           avgCTR,
         },
-        problemsByGrade: problemsByGrade.map(g => ({
+        problemsByGrade: problemsByGrade.map((g: { gradeLevel: string; _count: number }) => ({
           gradeLevel: g.gradeLevel,
           count: g._count,
         })),
-        problemsBySubject: problemsBySubject.map(s => ({
+        problemsBySubject: problemsBySubject.map((s: { subjectId: string; _count: number }) => ({
           subjectId: s.subjectId,
           subjectName: subjectMap[s.subjectId] || s.subjectId,
           count: s._count,
         })),
-        recentlyAdded: recentlyAdded.map(p => ({
+        recentlyAdded: recentlyAdded.map((p: { id: string; title: string | null; subject: { displayName: string }; unit: { name: string } | null; createdAt: Date }) => ({
           id: p.id,
           title: p.title,
           subject: p.subject.displayName,
           unit: p.unit?.name,
           createdAt: p.createdAt,
         })),
-        topKeywords: topKeywords.map(k => ({
+        topKeywords: topKeywords.map((k: { keyword: string; path: string; position: number | null; impressions: number; clicks: number }) => ({
           keyword: k.keyword,
           path: k.path,
           position: k.position,

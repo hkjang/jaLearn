@@ -3,6 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// Helper function to safely execute queries
+async function safeQuery<T>(query: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await query();
+  } catch (error) {
+    console.warn("Query failed (table may not exist):", error);
+    return fallback;
+  }
+}
+
 // GET /api/crawler/items - List crawled items
 export async function GET(request: NextRequest) {
   try {
@@ -28,8 +38,8 @@ export async function GET(request: NextRequest) {
     if (jobId) where.jobId = jobId;
     if (status) where.status = status;
 
-    const [items, total] = await Promise.all([
-      prisma.crawledItem.findMany({
+    const items = await safeQuery(
+      () => prisma.crawledItem.findMany({
         where,
         include: {
           source: {
@@ -40,8 +50,13 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.crawledItem.count({ where }),
-    ]);
+      []
+    );
+    
+    const total = await safeQuery(
+      () => prisma.crawledItem.count({ where }),
+      0
+    );
 
     return NextResponse.json({
       items,
