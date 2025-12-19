@@ -80,6 +80,12 @@ model User {
   // Expert Consultations
   userConsultations   ExpertConsultation[] @relation("UserConsultations")
   expertConsultations ExpertConsultation[] @relation("ExpertConsultations")
+  
+  // Problem Bank
+  createdProblems     Problem[] @relation("ProblemCreator")
+  problemReviews      ProblemReview[] @relation("ProblemReviewer")
+  problemVersions     ProblemVersion[] @relation("ProblemVersionChanger")
+  problemSubmissions  ProblemSubmission[] @relation("ProblemSubmissions")
 }
 
 model Account {
@@ -170,7 +176,9 @@ model Subject {
   iconName    String   @default("book")
   color       String   @default("#6366f1")
   
-  courses     Course[]
+  courses       Course[]
+  problemUnits  ProblemUnit[]
+  problems      Problem[]
 }
 
 model Course {
@@ -779,3 +787,201 @@ model ExpertConsultation {
   user          User     @relation("UserConsultations", fields: [userId], references: [id])
   expert        User?    @relation("ExpertConsultations", fields: [expertId], references: [id])
 }
+
+// ========================================
+// Problem Bank Models (문제 은행)
+// ========================================
+
+model Problem {
+  id            String   @id @default(cuid())
+  
+  // 기본 정보
+  title         String?           // 문제 제목 (선택)
+  content       String            // 문제 본문 (마크다운/LaTeX 지원)
+  contentHtml   String?           // HTML 렌더링 버전
+  
+  // 문제 유형
+  type          String            // MULTIPLE_CHOICE, SHORT_ANSWER, ESSAY, TRUE_FALSE
+  options       String?           // JSON: 객관식 선택지
+  answer        String            // 정답
+  explanation   String?           // 해설
+  
+  // 분류 정보
+  gradeLevel    String            // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
+  subjectId     String
+  unitId        String?
+  difficulty    String   @default("MEDIUM") // LOW, MEDIUM, HIGH
+  
+  // 메타데이터
+  sourceId      String?           // 출처
+  sourceType    String?           // PUBLIC, SCHOOL, TEXTBOOK, MOCK_EXAM, CUSTOM
+  sourceDetail  String?           // 상세 출처 정보
+  year          Int?              // 출제 연도
+  
+  // 저작권
+  copyright     String?           // 저작권 정보
+  isPublicDomain Boolean @default(false)
+  usageScope    String   @default("LEARNING") // LEARNING, AI_TRAINING
+  
+  // 상태 관리
+  status        String   @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED, ARCHIVED
+  reviewStage   String   @default("NONE")  // NONE, AUTO, AI, MANUAL, APPROVED
+  
+  // 품질 메트릭
+  qualityScore  Float?            // AI 품질 점수 0-100
+  usageCount    Int      @default(0)
+  correctRate   Float?            // 정답률
+  
+  // 생성 정보
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  unit          ProblemUnit? @relation(fields: [unitId], references: [id])
+  source        ProblemSource? @relation(fields: [sourceId], references: [id])
+  createdBy     User?    @relation("ProblemCreator", fields: [createdById], references: [id])
+  
+  tags          ProblemTagMapping[]
+  reviews       ProblemReview[]
+  versions      ProblemVersion[]
+  variants      ProblemVariant[]
+  submissions   ProblemSubmission[]
+  
+  @@index([subjectId, gradeLevel])
+  @@index([status, reviewStage])
+  @@index([sourceType])
+}
+
+model ProblemSource {
+  id            String   @id @default(cuid())
+  name          String   @unique  // 출처 이름
+  type          String            // PUBLIC, SCHOOL, TEXTBOOK, MOCK_EXAM
+  organization  String?           // 발행 기관
+  website       String?           // 관련 웹사이트
+  isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  
+  problems      Problem[]
+  
+  createdAt     DateTime @default(now())
+}
+
+model ProblemUnit {
+  id            String   @id @default(cuid())
+  name          String            // 단원명
+  code          String?           // 단원 코드
+  subjectId     String
+  gradeLevel    String
+  chapter       Int?              // 장
+  section       Int?              // 절
+  parentId      String?           // 상위 단원
+  order         Int      @default(0)
+  
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  parent        ProblemUnit? @relation("UnitHierarchy", fields: [parentId], references: [id])
+  children      ProblemUnit[] @relation("UnitHierarchy")
+  problems      Problem[]
+  
+  @@unique([subjectId, gradeLevel, code])
+}
+
+model ProblemTag {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  category      String?           // CONCEPT, SKILL, TOPIC
+  color         String   @default("#6366f1")
+  
+  problems      ProblemTagMapping[]
+}
+
+model ProblemTagMapping {
+  id            String   @id @default(cuid())
+  problemId     String
+  tagId         String
+  
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  tag           ProblemTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([problemId, tagId])
+}
+
+model ProblemReview {
+  id            String   @id @default(cuid())
+  problemId     String
+  reviewerId    String?
+  stage         String            // AUTO, AI, MANUAL
+  status        String            // PENDING, APPROVED, REJECTED, NEEDS_REVISION
+  comments      String?
+  score         Float?            // 0-100
+  issues        String?           // JSON: 발견된 문제점
+  
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  reviewer      User?    @relation("ProblemReviewer", fields: [reviewerId], references: [id])
+  
+  createdAt     DateTime @default(now())
+}
+
+model ProblemVersion {
+  id            String   @id @default(cuid())
+  problemId     String
+  version       Int
+  content       String
+  options       String?
+  answer        String
+  explanation   String?
+  changeNote    String?
+  changedById   String?
+  
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  changedBy     User?    @relation("ProblemVersionChanger", fields: [changedById], references: [id])
+  
+  createdAt     DateTime @default(now())
+}
+
+model ProblemVariant {
+  id            String   @id @default(cuid())
+  originalId    String
+  type          String            // NUMERIC, OPTION_ORDER, DIFFICULTY
+  content       String
+  options       String?
+  answer        String
+  difficulty    String?
+  generatedBy   String   @default("MANUAL") // MANUAL, AI
+  
+  original      Problem  @relation(fields: [originalId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+}
+
+model ProblemSubmission {
+  id            String   @id @default(cuid())
+  problemId     String
+  userId        String
+  answer        String
+  isCorrect     Boolean
+  timeSpent     Int?     // seconds
+  
+  problem       Problem  @relation(fields: [problemId], references: [id])
+  user          User     @relation("ProblemSubmissions", fields: [userId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([problemId, userId])
+}
+
+model ProblemAuditLog {
+  id            String   @id @default(cuid())
+  problemId     String
+  userId        String?
+  action        String            // CREATE, UPDATE, DELETE, VIEW, EXPORT
+  details       String?           // JSON
+  ipAddress     String?
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([problemId])
+  @@index([userId])
+}
+
