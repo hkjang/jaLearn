@@ -25,7 +25,15 @@ export interface PdfParseResult {
 export async function parsePdfBuffer(buffer: Buffer): Promise<PdfParseResult> {
   try {
     // Dynamic import to handle cases where pdf-parse isn't installed
-    const pdfParse = await import('pdf-parse').then(m => m.default).catch(() => null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let pdfParse: ((buffer: Buffer) => Promise<any>) | null = null;
+    try {
+      const module = await import('pdf-parse');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pdfParse = (module as any).default || module;
+    } catch {
+      pdfParse = null;
+    }
     
     if (!pdfParse) {
       return {

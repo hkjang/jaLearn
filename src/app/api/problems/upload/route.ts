@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const { valid, invalid } = validateProblems(parseResult.problems);
 
     // If autoSave is true and we have valid problems, save them
-    let savedProblems = [];
+    let savedProblems: { id: string }[] = [];
     if (autoSave && valid.length > 0 && gradeLevel && subjectId) {
       savedProblems = await Promise.all(
         valid.map(async (parsed) => {

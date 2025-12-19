@@ -50,21 +50,21 @@ const mockCurrentLesson = {
   questions: [
     {
       id: "q1",
-      type: "MULTIPLE_CHOICE",
+      type: "MULTIPLE_CHOICE" as const,
       content: "다음 중 1/4 + 2/4의 결과는 무엇인가요?",
       options: ["1/4", "2/4", "3/4", "4/4"],
       correctAnswer: "3/4",
     },
     {
       id: "q2",
-      type: "MULTIPLE_CHOICE",
+      type: "MULTIPLE_CHOICE" as const,
       content: "3/5 - 1/5 = ?",
       options: ["1/5", "2/5", "3/5", "4/5"],
       correctAnswer: "2/5",
     },
     {
       id: "q3",
-      type: "SHORT_ANSWER",
+      type: "SHORT_ANSWER" as const,
       content: "분모가 같은 분수의 덧셈에서, 어떤 부분만 더하면 되나요?",
       correctAnswer: "분자",
     },
