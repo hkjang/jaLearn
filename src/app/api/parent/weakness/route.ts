@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const recentSubmissions = await prisma.problemSubmission.findMany({
+    const recentSubmissions: any[] = await (prisma as any).problemSubmission.findMany({
       where: {
         userId: targetChildId,
         createdAt: { gte: thirtyDaysAgo },
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     // 단원별 정답률 분석
     const unitStats = new Map<string, { correct: number; total: number; name: string; subject: string }>();
     
-    recentSubmissions.forEach((sub) => {
+    recentSubmissions.forEach((sub: any) => {
       const unitId = sub.problem.unitId || 'unknown';
       const current = unitStats.get(unitId) || {
         correct: 0,
@@ -107,12 +107,12 @@ export async function GET(request: Request) {
     
     // 전체 요약 통계
     const totalProblems = recentSubmissions.length;
-    const correctProblems = recentSubmissions.filter((s) => s.isCorrect).length;
+    const correctProblems = recentSubmissions.filter((s: any) => s.isCorrect).length;
     const overallRate = totalProblems > 0 ? Math.round((correctProblems / totalProblems) * 100) : 0;
     
     // 일일 학습량
     const dailyStats = new Map<string, { problems: number; correct: number }>();
-    recentSubmissions.forEach((sub) => {
+    recentSubmissions.forEach((sub: any) => {
       const dateKey = sub.createdAt.toISOString().split('T')[0];
       const current = dailyStats.get(dateKey) || { problems: 0, correct: 0 };
       current.problems += 1;
