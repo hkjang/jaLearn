@@ -174,6 +174,24 @@ export default function CrawlerDashboardPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/admin/crawler/dashboard"
+            className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm"
+          >
+            대시보드
+          </Link>
+          <Link
+            href="/admin/crawler/review"
+            className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm"
+          >
+            검수
+          </Link>
+          <Link
+            href="/admin/crawler/batch"
+            className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm"
+          >
+            배치
+          </Link>
           <button
             onClick={fetchData}
             className="flex items-center gap-2 px-3 py-2 border rounded-lg hover:bg-gray-50"
