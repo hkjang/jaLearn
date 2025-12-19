@@ -71,7 +71,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check source exists
     const source = await prisma.collectionSource.findUnique({
       where: { id: sourceId },
     });
@@ -83,7 +82,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create job
     const job = await prisma.crawlJob.create({
       data: {
         sourceId,
@@ -95,13 +93,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Log creation
     await prisma.crawlLog.create({
       data: {
         jobId: job.id,
         level: "INFO",
         action: "CREATE",
-        message: `?�롤�??�업 ?�성: ${source.name}`,
+        message: `크롤링 작업 생성: ${source.name}`,
       },
     });
 
@@ -138,7 +135,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Add timestamps based on status
     if (status === "RUNNING" && !updateData.startedAt) {
       updateData.startedAt = new Date();
     }
@@ -184,7 +180,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Soft cancel - update status
     const job = await prisma.crawlJob.update({
       where: { id },
       data: {
@@ -198,7 +193,7 @@ export async function DELETE(request: NextRequest) {
         jobId: id,
         level: "INFO",
         action: "CANCEL",
-        message: "?�업??취소?�었?�니??,
+        message: "작업이 취소되었습니다",
       },
     });
 

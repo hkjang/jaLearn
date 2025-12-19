@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/crawler/items/[id]/import - Import item as problems
+// POST /api/crawler/items - Import item as problems
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -84,7 +84,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get item
     const item = await prisma.crawledItem.findUnique({
       where: { id: itemId },
       include: { source: true },
@@ -101,7 +100,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse problems
     const parsedData = JSON.parse(item.parsedData);
     const problems = parsedData.problems || [];
     const createdProblemIds: string[] = [];
@@ -117,8 +115,8 @@ export async function POST(request: NextRequest) {
           gradeLevel: item.grade || 'HIGH_3',
           subjectId,
           difficulty: 'MEDIUM',
-          sourceType: item.source.type,
-          sourceDetail: `${item.source.name} - ${item.examName || ''} ${item.year || ''}`,
+          sourceType: item.source?.type || 'OTHER',
+          sourceDetail: `${item.source?.name || ''} - ${item.examName || ''} ${item.year || ''}`,
           year: item.year,
           status: 'PENDING',
           reviewStage: 'NONE',
@@ -128,7 +126,6 @@ export async function POST(request: NextRequest) {
       createdProblemIds.push(problem.id);
     }
 
-    // Update item status
     await prisma.crawledItem.update({
       where: { id: itemId },
       data: {
