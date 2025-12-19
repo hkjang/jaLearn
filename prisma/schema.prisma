@@ -64,6 +64,22 @@ model User {
   // AI Usage
   aiUsage         AIUsage[]
   userCredits     UserCredits?
+  
+  // AI Tutor Premium
+  tutorSessions   AITutorSession[]
+  tutorMemory     TutorMemory?
+  examGoals       ExamGoal[]
+  examCalendars   ExamCalendar[]
+  
+  // Parent Dashboard
+  parentReports   ParentReport[] @relation("ParentReports")
+  childReports    ParentReport[] @relation("ChildReports")
+  parentAlerts    ParentAlert[]  @relation("ParentAlerts")
+  childAlerts     ParentAlert[]  @relation("ChildAlerts")
+  
+  // Expert Consultations
+  userConsultations   ExpertConsultation[] @relation("UserConsultations")
+  expertConsultations ExpertConsultation[] @relation("ExpertConsultations")
 }
 
 model Account {
@@ -581,3 +597,185 @@ model UserCredits {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// ========================================
+// AI Tutor Premium Models
+// ========================================
+
+model AITutorPlan {
+  id            String   @id @default(cuid())
+  name          String   @unique  // AI_TUTOR_PRO, AI_TUTOR_ELITE, AI_TUTOR_TIME, EXAM_PASS
+  displayName   String
+  description   String?
+  priceType     String   // MONTHLY, PER_MINUTE, PERIOD
+  price         Int      // Monthly price or per-minute rate
+  features      String   // JSON array
+  minuteRate    Int?     // Rate per minute for TIME plan
+  maxSessions   Int?     // Max sessions per month (null = unlimited)
+  hasRealTimeIntervention Boolean @default(false)
+  hasExamAnalysis Boolean @default(false)
+  hasMemory     Boolean  @default(true)
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model AITutorSession {
+  id            String   @id @default(cuid())
+  userId        String
+  planType      String   // PRO, ELITE, TIME
+  topic         String?
+  subject       String?
+  gradeLevel    String?
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  durationMins  Int      @default(0)
+  tokensUsed    Int      @default(0)
+  messagesCount Int      @default(0)
+  cost          Int      @default(0)
+  status        String   @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
+  rating        Int?     // 1-5 satisfaction rating
+  feedback      String?
+  createdAt     DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      TutorMessage[]
+  
+  @@index([userId, startTime])
+}
+
+model TutorMessage {
+  id            String   @id @default(cuid())
+  sessionId     String
+  role          String   // USER, TUTOR, SYSTEM
+  content       String
+  contentType   String   @default("TEXT") // TEXT, LATEX, IMAGE, CODE
+  tokensUsed    Int      @default(0)
+  isIntervention Boolean @default(false) // Real-time intervention
+  metadata      String?  // JSON for additional data
+  createdAt     DateTime @default(now())
+  
+  session       AITutorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model TutorMemory {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  shortTerm     String   @default("{}") // JSON - recent context
+  longTerm      String   @default("{}") // JSON - learning patterns, weaknesses
+  preferences   String?  // JSON - learning preferences
+  strengths     String?  // JSON - areas of strength
+  weaknesses    String?  // JSON - areas needing improvement
+  learningStyle String?  // VISUAL, AUDITORY, READING, KINESTHETIC
+  lastTopics    String?  // JSON - recent topics covered
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ========================================
+// Exam Prep Models
+// ========================================
+
+model ExamGoal {
+  id            String   @id @default(cuid())
+  userId        String
+  examType      String   // SUNEUNG, MOCK, SCHOOL, CERTIFICATE
+  examName      String
+  targetDate    DateTime
+  targetScore   Int?
+  currentScore  Int?
+  subjects      String   // JSON array of subjects
+  strategies    String?  // JSON - study strategies
+  status        String   @default("ACTIVE") // ACTIVE, ACHIEVED, EXPIRED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  predictions   ExamPrediction[]
+}
+
+model ExamPrediction {
+  id            String   @id @default(cuid())
+  goalId        String
+  predictedScore Int
+  confidence    Float    // 0-1
+  basedOn       String   // JSON - factors used
+  recommendations String? // JSON - improvement suggestions
+  createdAt     DateTime @default(now())
+  
+  goal          ExamGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+model ExamCalendar {
+  id            String   @id @default(cuid())
+  userId        String
+  examType      String
+  examName      String
+  examDate      DateTime
+  registrationDeadline DateTime?
+  reminderDays  Int      @default(7)
+  notes         String?
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ========================================
+// Parent Dashboard Models
+// ========================================
+
+model ParentReport {
+  id            String   @id @default(cuid())
+  parentId      String
+  childId       String
+  reportType    String   // DAILY, WEEKLY, MONTHLY
+  period        String   // e.g., "2024-01-15" or "2024-W03"
+  studyTime     Int      // Total minutes
+  completedLessons Int
+  quizScores    String   // JSON array
+  aiInteractions Int
+  strengths     String?  // JSON
+  improvements  String?  // JSON
+  aiComment     String?  // AI-generated summary
+  createdAt     DateTime @default(now())
+  
+  parent        User     @relation("ParentReports", fields: [parentId], references: [id])
+  child         User     @relation("ChildReports", fields: [childId], references: [id])
+}
+
+model ParentAlert {
+  id            String   @id @default(cuid())
+  parentId      String
+  childId       String
+  alertType     String   // GRADE_DROP, INACTIVITY, GOAL_RISK, ACHIEVEMENT
+  severity      String   @default("INFO") // INFO, WARNING, CRITICAL
+  title         String
+  message       String
+  isRead        Boolean  @default(false)
+  actionUrl     String?
+  createdAt     DateTime @default(now())
+  
+  parent        User     @relation("ParentAlerts", fields: [parentId], references: [id])
+  child         User     @relation("ChildAlerts", fields: [childId], references: [id])
+}
+
+// ========================================
+// Expert Consultation Models
+// ========================================
+
+model ExpertConsultation {
+  id            String   @id @default(cuid())
+  userId        String
+  expertId      String?
+  type          String   // MONTHLY, EMERGENCY, AI_REVIEW
+  scheduledAt   DateTime?
+  completedAt   DateTime?
+  duration      Int?     // Minutes
+  notes         String?
+  aiSummary     String?  // AI-generated session summary
+  status        String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  rating        Int?
+  createdAt     DateTime @default(now())
+  
+  user          User     @relation("UserConsultations", fields: [userId], references: [id])
+  expert        User?    @relation("ExpertConsultations", fields: [expertId], references: [id])
+}
