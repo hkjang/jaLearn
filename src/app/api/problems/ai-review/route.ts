@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         stage: "AI",
         status: reviewResult.recommendedAction === "APPROVE" ? "APPROVED" : 
                 reviewResult.recommendedAction === "REJECT" ? "REJECTED" : "NEEDS_REVISION",
-        comments: `AI 검수 결과: ${reviewResult.detectedIssues.join(', ') || '문제 없음'}`,
+        comments: `AI 검??결과: ${reviewResult.detectedIssues.join(', ') || '문제 ?�음'}`,
         score: reviewResult.overallConfidence * 100,
         issues: JSON.stringify({
           issues: reviewResult.detectedIssues,
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
           stage: "AI",
           status: reviewResult.recommendedAction === "APPROVE" ? "APPROVED" : 
                   reviewResult.recommendedAction === "REJECT" ? "REJECTED" : "NEEDS_REVISION",
-          comments: `[배치 AI 검수] ${reviewResult.detectedIssues.join(', ') || '문제 없음'}`,
+          comments: `[배치 AI 검?? ${reviewResult.detectedIssues.join(', ') || '문제 ?�음'}`,
           score: reviewResult.overallConfidence * 100,
           issues: JSON.stringify({
             issues: reviewResult.detectedIssues,

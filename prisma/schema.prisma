@@ -1082,3 +1082,133 @@ model ProblemCurriculumMapping {
   @@unique([problemId, standardId])
   @@index([standardId])
 }
+
+// ========================================
+// Problem Crawler Models (문제 자동 수집)
+// ========================================
+
+// 수집 대상 사이트
+model CollectionSource {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  type          String   // KICE, EDU_OFFICE, COMMUNITY, API, OTHER
+  baseUrl       String
+  description   String?
+  
+  // 크롤링 설정
+  crawlPattern  String?  // URL 패턴 (정규식)
+  linkSelector  String?  // CSS 선택자
+  fileTypes     String   @default("pdf,hwp")
+  maxDepth      Int      @default(2)
+  
+  // robots.txt
+  robotsChecked Boolean  @default(false)
+  robotsAllowed Boolean  @default(true)
+  crawlDelay    Int      @default(1000) // ms
+  
+  // 메타데이터
+  grade         String   @default("D") // A-E 신뢰 등급
+  isActive      Boolean  @default(true)
+  lastCrawledAt DateTime?
+  
+  jobs          CrawlJob[]
+  items         CrawledItem[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([type, isActive])
+}
+
+// 수집 작업
+model CrawlJob {
+  id            String   @id @default(cuid())
+  sourceId      String
+  
+  status        String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED, CANCELLED
+  priority      Int      @default(0)
+  
+  // 실행 정보
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  // 결과 통계
+  pagesVisited  Int      @default(0)
+  filesFound    Int      @default(0)
+  filesSaved    Int      @default(0)
+  problemsExtracted Int  @default(0)
+  
+  // 오류 정보
+  errorCount    Int      @default(0)
+  lastError     String?
+  
+  source        CollectionSource @relation(fields: [sourceId], references: [id])
+  items         CrawledItem[]
+  logs          CrawlLog[]
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([sourceId, status])
+  @@index([status, createdAt])
+}
+
+// 수집된 항목
+model CrawledItem {
+  id            String   @id @default(cuid())
+  sourceId      String
+  jobId         String?
+  
+  // 원본 정보
+  url           String
+  fileType      String   // pdf, hwp, html, image
+  fileName      String?
+  filePath      String?  // 로컬 저장 경로
+  fileSize      Int?     // bytes
+  
+  // OCR/파싱 결과
+  rawText       String?  // OCR 추출 텍스트
+  parsedData    String?  // JSON: 파싱된 문제 배열
+  
+  // 메타데이터 (추출된)
+  year          Int?
+  month         Int?
+  examName      String?  // 수능, 모의고사, 학력평가 등
+  subject       String?
+  grade         String?  // 학년
+  
+  // 상태
+  status        String   @default("PENDING") // PENDING, DOWNLOADED, OCR_PROCESSING, OCR_DONE, PARSED, IMPORTED, FAILED
+  ocrConfidence Float?   // OCR 신뢰도 0-1
+  problemCount  Int?     // 추출된 문제 수
+  
+  // 연결된 문제
+  importedProblemIds String? // JSON: 가져온 문제 ID 배열
+  
+  source        CollectionSource @relation(fields: [sourceId], references: [id])
+  job           CrawlJob? @relation(fields: [jobId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([sourceId, url])
+  @@index([status])
+  @@index([jobId])
+}
+
+// 수집 로그
+model CrawlLog {
+  id            String   @id @default(cuid())
+  jobId         String
+  
+  level         String   // DEBUG, INFO, WARN, ERROR
+  action        String   // FETCH, DOWNLOAD, OCR, PARSE, IMPORT
+  message       String
+  details       String?  // JSON
+  url           String?
+  
+  job           CrawlJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([jobId, level])
+}

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { AITutorEngine } from "@/lib/ai-tutor-engine";
 import { StudentContext, LearningMemory } from "@/lib/ai-tutor-prompts";
 
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -53,10 +53,10 @@ export async function POST(request: Request) {
       // Build student context
       const studentContext: StudentContext = {
         id: session.user.id,
-        name: user?.name || "학생",
+        name: user?.name || "?숈깮",
         gradeLevel: user?.gradeLevel || "HIGH_1",
         subject: subject || "MATH",
-        currentTopic: topic || "일반 학습",
+        currentTopic: topic || "?쇰컲 ?숈뒿",
       };
 
       // Parse learning memory
@@ -212,13 +212,13 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: "유효하지 않은 액션입니다." },
+      { error: "?좏슚?섏? ?딆? ?≪뀡?낅땲??" },
       { status: 400 }
     );
   } catch (error) {
     console.error("Tutor chat error:", error);
     return NextResponse.json(
-      { error: "처리 중 오류가 발생했습니다." },
+      { error: "泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
@@ -240,3 +240,4 @@ async function getRecentTopics(userId: string): Promise<string[]> {
   }
   return [];
 }
+

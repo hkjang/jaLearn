@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // GET - Get user's consultations
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -30,7 +30,7 @@ export async function GET() {
   } catch (error) {
     console.error("Get consultations error:", error);
     return NextResponse.json(
-      { error: "조회 중 오류가 발생했습니다." },
+      { error: "議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const validTypes = ["MONTHLY", "EMERGENCY", "AI_REVIEW"];
     if (!validTypes.includes(type)) {
       return NextResponse.json(
-        { error: "유효하지 않은 상담 유형입니다." },
+        { error: "?좏슚?섏? ?딆? ?곷떞 ?좏삎?낅땲??" },
         { status: 400 }
       );
     }
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       const hasElite = subscription?.plan?.name?.includes("ELITE");
       if (!hasElite) {
         return NextResponse.json(
-          { error: "월간 상담은 Elite 플랜에서만 이용 가능합니다." },
+          { error: "?붽컙 ?곷떞? Elite ?뚮옖?먯꽌留??댁슜 媛?ν빀?덈떎." },
           { status: 403 }
         );
       }
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 
       if (monthlyCount >= 1) {
         return NextResponse.json(
-          { error: "이번 달 월간 상담을 이미 사용하셨습니다." },
+          { error: "?대쾲 ???붽컙 ?곷떞???대? ?ъ슜?섏뀲?듬땲??" },
           { status: 400 }
         );
       }
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Book consultation error:", error);
     return NextResponse.json(
-      { error: "예약 중 오류가 발생했습니다." },
+      { error: "?덉빟 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
@@ -132,7 +132,7 @@ export async function PUT(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -146,7 +146,7 @@ export async function PUT(request: Request) {
 
     if (!consultation || consultation.userId !== session.user.id) {
       return NextResponse.json(
-        { error: "상담을 찾을 수 없습니다." },
+        { error: "?곷떞??李얠쓣 ???놁뒿?덈떎." },
         { status: 404 }
       );
     }
@@ -183,8 +183,9 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("Update consultation error:", error);
     return NextResponse.json(
-      { error: "업데이트 중 오류가 발생했습니다." },
+      { error: "?낅뜲?댄듃 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
 }
+

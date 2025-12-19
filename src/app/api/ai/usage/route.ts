@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // Get today's start date
 function getTodayStart(): Date {
@@ -17,7 +17,7 @@ export async function GET() {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -72,7 +72,7 @@ export async function GET() {
   } catch (error) {
     console.error("Get AI usage error:", error);
     return NextResponse.json(
-      { error: "사용량 조회 중 오류가 발생했습니다." },
+      { error: "?ъ슜??議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     const validTypes = ["QUESTION", "PROBLEM_GEN", "ANALYSIS", "TUTOR"];
     if (!validTypes.includes(type)) {
       return NextResponse.json(
-        { error: "유효하지 않은 사용 유형입니다." },
+        { error: "?좏슚?섏? ?딆? ?ъ슜 ?좏삎?낅땲??" },
         { status: 400 }
       );
     }
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     if (aiLimit < 999999 && usedToday >= aiLimit) {
       return NextResponse.json({
         success: false,
-        error: "오늘의 AI 사용량을 초과했습니다.",
+        error: "?ㅻ뒛??AI ?ъ슜?됱쓣 珥덇낵?덉뒿?덈떎.",
         limitReached: true,
         usedToday,
         limit: aiLimit,
@@ -156,8 +156,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Record AI usage error:", error);
     return NextResponse.json(
-      { error: "사용량 기록 중 오류가 발생했습니다." },
+      { error: "?ъ슜??湲곕줉 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
 }
+

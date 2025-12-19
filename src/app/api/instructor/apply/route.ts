@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // POST - Submit instructor application
 export async function POST(request: Request) {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "이미 강사 신청을 하셨습니다." },
+        { error: "?대? 媛뺤궗 ?좎껌???섏뀲?듬땲??" },
         { status: 400 }
       );
     }
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     if (!displayName || !specialties || specialties.length === 0) {
       return NextResponse.json(
-        { error: "필수 항목을 모두 입력해주세요." },
+        { error: "?꾩닔 ??ぉ??紐⑤몢 ?낅젰?댁＜?몄슂." },
         { status: 400 }
       );
     }
@@ -60,12 +60,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       instructorProfile,
-      message: "강사 신청이 완료되었습니다. 심사 후 결과를 알려드리겠습니다.",
+      message: "媛뺤궗 ?좎껌???꾨즺?섏뿀?듬땲?? ?ъ궗 ??寃곌낵瑜??뚮젮?쒕━寃좎뒿?덈떎.",
     });
   } catch (error) {
     console.error("Instructor apply error:", error);
     return NextResponse.json(
-      { error: "강사 신청 중 오류가 발생했습니다." },
+      { error: "媛뺤궗 ?좎껌 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
@@ -78,7 +78,7 @@ export async function GET() {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -105,8 +105,9 @@ export async function GET() {
   } catch (error) {
     console.error("Get instructor status error:", error);
     return NextResponse.json(
-      { error: "조회 중 오류가 발생했습니다." },
+      { error: "議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
 }
+

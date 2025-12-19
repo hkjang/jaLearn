@@ -22,7 +22,8 @@ import {
   CreditCard,
   Shield,
   FileQuestion,
-  BarChart
+  BarChart,
+  Download
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
@@ -39,6 +40,7 @@ const adminItems = [
   { href: "/admin", label: "관리자홈", icon: Shield },
   { href: "/admin/problems/dashboard", label: "문제 대시보드", icon: BarChart },
   { href: "/admin/problems", label: "문제관리", icon: FileQuestion },
+  { href: "/admin/crawler", label: "자동수집", icon: Download },
   { href: "/admin/curriculum", label: "교육과정", icon: GraduationCap },
   { href: "/admin/ai-tutor", label: "AI 튜터관리", icon: Brain },
   { href: "/admin/revenue", label: "매출관리", icon: CreditCard },

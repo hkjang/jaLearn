@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
     let suggestedSubjectId: string | null = null;
     if (result.suggestedSubject) {
       const subjectMapping: Record<string, string> = {
-        math: '수학',
-        korean: '국어',
-        english: '영어',
+        math: '?�학',
+        korean: '�?��',
+        english: '?�어',
         science: '과학',
-        social: '사회',
+        social: '?�회',
       };
       
       const subjectName = subjectMapping[result.suggestedSubject];

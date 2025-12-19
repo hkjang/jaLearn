@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // Generate unique order ID
 function generateOrderId(): string {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const validPlans = ["FREE", "PREMIUM_BASIC", "PREMIUM_PLUS"];
     if (!validPlans.includes(planId)) {
       return NextResponse.json(
-        { error: "유효하지 않은 요금제입니다." },
+        { error: "?좏슚?섏? ?딆? ?붽툑?쒖엯?덈떎." },
         { status: 400 }
       );
     }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
             displayName: "Free",
             price: 0,
             yearlyPrice: 0,
-            features: JSON.stringify(["기본 강의", "문제 10개/일", "AI 10회/일"]),
+            features: JSON.stringify(["湲곕낯 媛뺤쓽", "臾몄젣 10媛???, "AI 10????]),
             aiQuestionsPerDay: 10,
             problemsPerDay: 10,
           },
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
           displayName: "Premium Basic",
           price: 9900,
           yearlyPrice: 99000,
-          features: ["모든 강의", "문제 무제한", "AI 50회/일", "오답 노트"],
+          features: ["紐⑤뱺 媛뺤쓽", "臾몄젣 臾댁젣??, "AI 50????, "?ㅻ떟 ?명듃"],
           aiQuestionsPerDay: 50,
           problemsPerDay: 999999,
           hasAnalytics: false,
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
           displayName: "Premium Plus",
           price: 19900,
           yearlyPrice: 199000,
-          features: ["모든 기능", "AI 무제한", "분석 리포트", "1:1 코칭"],
+          features: ["紐⑤뱺 湲곕뒫", "AI 臾댁젣??, "遺꾩꽍 由ы룷??, "1:1 肄붿묶"],
           aiQuestionsPerDay: 999999,
           problemsPerDay: 999999,
           hasAnalytics: true,
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Payment error:", error);
     return NextResponse.json(
-      { error: "결제 처리 중 오류가 발생했습니다." },
+      { error: "寃곗젣 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
@@ -238,7 +238,7 @@ export async function GET() {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "로그인이 필요합니다." },
+        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
         { status: 401 }
       );
     }
@@ -255,8 +255,9 @@ export async function GET() {
   } catch (error) {
     console.error("Get payments error:", error);
     return NextResponse.json(
-      { error: "결제 내역 조회 중 오류가 발생했습니다." },
+      { error: "寃곗젣 ?댁뿭 議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
       { status: 500 }
     );
   }
 }
+
