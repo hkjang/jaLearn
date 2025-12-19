@@ -1187,6 +1187,10 @@ model CrawledItem {
   source        CollectionSource @relation(fields: [sourceId], references: [id])
   job           CrawlJob? @relation(fields: [jobId], references: [id])
   
+  // Phase 1: 고도화 관계
+  reviewQueues  ReviewQueue[]
+  ocrTasks      OcrTask[]
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -1211,4 +1215,94 @@ model CrawlLog {
   createdAt     DateTime @default(now())
   
   @@index([jobId, level])
+}
+
+// ========================================
+// 문제 수집 고도화 Models (Phase 1)
+// ========================================
+
+// 검수 대기함
+model ReviewQueue {
+  id            String   @id @default(cuid())
+  itemId        String
+  priority      Int      @default(0)  // 우선순위 (높을수록 우선)
+  status        String   @default("PENDING") // PENDING, IN_REVIEW, APPROVED, REJECTED
+  assignedTo    String?  // 담당자 ID
+  reviewType    String   // OCR_ERROR, PARSE_ERROR, QUALITY_CHECK, DUPLICATE
+  confidence    Float?   // AI 신뢰도 0-1
+  notes         String?  // 검수 메모
+  
+  item          CrawledItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([status, priority])
+  @@index([assignedTo])
+}
+
+// OCR 작업
+model OcrTask {
+  id            String   @id @default(cuid())
+  itemId        String
+  engine        String   @default("TESSERACT") // TESSERACT, GOOGLE_VISION, AWS_TEXTRACT
+  status        String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  confidence    Float?   // 0-1
+  text          String?
+  errorMessage  String?
+  processingMs  Int?     // 처리 시간 (ms)
+  
+  item          CrawledItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([status])
+  @@index([itemId])
+}
+
+// 배치 작업
+model CollectionBatch {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  schedule      String?  // cron expression
+  isNightMode   Boolean  @default(false)
+  status        String   @default("IDLE") // IDLE, QUEUED, RUNNING, PAUSED, COMPLETED
+  priority      Int      @default(0)
+  
+  // 조건
+  sourceIds     String   // JSON array of source IDs
+  filters       String?  // JSON: 추가 필터 조건
+  
+  // 결과
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([status])
+  @@index([priority])
+}
+
+// 수집 통계 (대시보드용)
+model CollectionStats {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  
+  // 일별 통계
+  problemsCollected Int  @default(0)
+  filesProcessed    Int  @default(0)
+  successRate       Float @default(0)
+  ocrAccuracy       Float @default(0)
+  
+  // 오류 통계
+  errorCount        Int  @default(0)
+  topErrorTypes     String?  // JSON: { type: count }
+  
+  // 소스별 통계
+  sourceStats       String?  // JSON: { sourceId: { count, success, failed } }
+  
+  @@unique([date])
+  @@index([date])
 }
