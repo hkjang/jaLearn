@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // POST - Start a new tutor session
 export async function POST(request: Request) {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const validPlanTypes = ["PRO", "ELITE", "TIME"];
     if (!validPlanTypes.includes(planType)) {
       return NextResponse.json(
-        { error: "?좏슚?섏? ?딆? ?뚮옖?낅땲??" },
+        { error: "유효하지 않은 플랜입니다." },
         { status: 400 }
       );
     }
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Start session error:", error);
     return NextResponse.json(
-      { error: "?몄뀡 ?쒖옉 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "세션 시작 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
 
       if (!tutorSession || tutorSession.userId !== session.user.id) {
         return NextResponse.json(
-          { error: "?몄뀡??李얠쓣 ???놁뒿?덈떎." },
+          { error: "세션을 찾을 수 없습니다." },
           { status: 404 }
         );
       }
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Get sessions error:", error);
     return NextResponse.json(
-      { error: "議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -140,7 +140,7 @@ export async function PUT(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -154,7 +154,7 @@ export async function PUT(request: Request) {
 
     if (!tutorSession || tutorSession.userId !== session.user.id) {
       return NextResponse.json(
-        { error: "?몄뀡??李얠쓣 ???놁뒿?덈떎." },
+        { error: "세션을 찾을 수 없습니다." },
         { status: 404 }
       );
     }
@@ -168,7 +168,7 @@ export async function PUT(request: Request) {
       // Calculate cost for TIME plan
       let cost = 0;
       if (tutorSession.planType === "TIME") {
-        cost = durationMins * 500; // ??00/min
+        cost = durationMins * 500; // ₩500/min
       }
 
       const updated = await prisma.aITutorSession.update({
@@ -230,15 +230,14 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json(
-      { error: "?좏슚?섏? ?딆? ?≪뀡?낅땲??" },
+      { error: "유효하지 않은 액션입니다." },
       { status: 400 }
     );
   } catch (error) {
     console.error("Update session error:", error);
     return NextResponse.json(
-      { error: "?낅뜲?댄듃 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "업데이트 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
 }
-

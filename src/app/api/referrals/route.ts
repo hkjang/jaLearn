@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // Generate referral code
 function generateReferralCode(userId: string): string {
@@ -16,7 +16,7 @@ export async function GET() {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -69,7 +69,7 @@ export async function GET() {
   } catch (error) {
     console.error("Get referral error:", error);
     return NextResponse.json(
-      { error: "議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
 
     if (!referralCode) {
       return NextResponse.json(
-        { error: "異붿쿇 肄붾뱶瑜??낅젰?댁＜?몄슂." },
+        { error: "추천 코드를 입력해주세요." },
         { status: 400 }
       );
     }
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
     if (!referrer) {
       return NextResponse.json(
-        { error: "?좏슚?섏? ?딆? 異붿쿇 肄붾뱶?낅땲??" },
+        { error: "유효하지 않은 추천 코드입니다." },
         { status: 400 }
       );
     }
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
     if (existingReferral) {
       return NextResponse.json(
-        { error: "?대? 異붿쿇 肄붾뱶瑜??ъ슜?섏뀲?듬땲??" },
+        { error: "이미 추천 코드를 사용하셨습니다." },
         { status: 400 }
       );
     }
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     // Can't refer yourself
     if (referrer.id === session.user.id) {
       return NextResponse.json(
-        { error: "蹂몄씤??異붿쿇 肄붾뱶???ъ슜?????놁뒿?덈떎." },
+        { error: "본인의 추천 코드는 사용할 수 없습니다." },
         { status: 400 }
       );
     }
@@ -148,8 +148,8 @@ export async function POST(request: Request) {
     await prisma.coupon.create({
       data: {
         code: couponCode,
-        name: "移쒓뎄 異붿쿇 ?섏쁺 荑좏룿",
-        description: "泥?寃곗젣 ??10% ?좎씤",
+        name: "친구 추천 환영 쿠폰",
+        description: "첫 결제 시 10% 할인",
         discountType: "PERCENT",
         discountValue: 10,
         maxUses: 1,
@@ -170,15 +170,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "異붿쿇 肄붾뱶媛 ?곸슜?섏뿀?듬땲?? 泥?寃곗젣 ??10% ?좎씤 荑좏룿??諛쒓툒?섏뿀?듬땲??",
+      message: "추천 코드가 적용되었습니다. 첫 결제 시 10% 할인 쿠폰이 발급되었습니다.",
       couponCode,
     });
   } catch (error) {
     console.error("Apply referral error:", error);
     return NextResponse.json(
-      { error: "異붿쿇 肄붾뱶 ?곸슜 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "추천 코드 적용 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
 }
-

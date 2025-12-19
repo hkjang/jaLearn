@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // GET - Get current subscription
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -31,7 +31,7 @@ export async function GET() {
           name: "FREE",
           displayName: "Free",
           price: 0,
-          features: ["湲곕낯 媛뺤쓽", "臾몄젣 10媛???, "AI 10????],
+          features: ["기본 강의", "문제 10개/일", "AI 10회/일"],
         },
         status: "ACTIVE",
         isFreePlan: true,
@@ -49,7 +49,7 @@ export async function GET() {
   } catch (error) {
     console.error("Get subscription error:", error);
     return NextResponse.json(
-      { error: "援щ룆 ?뺣낫 議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "구독 정보 조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -62,7 +62,7 @@ export async function PUT(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -79,7 +79,7 @@ export async function PUT(request: Request) {
 
     if (!subscription) {
       return NextResponse.json(
-        { error: "?쒖꽦 援щ룆???놁뒿?덈떎." },
+        { error: "활성 구독이 없습니다." },
         { status: 404 }
       );
     }
@@ -114,7 +114,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("Update subscription error:", error);
     return NextResponse.json(
-      { error: "援щ룆 ?낅뜲?댄듃 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "구독 업데이트 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -127,7 +127,7 @@ export async function DELETE(request: Request) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "濡쒓렇?몄씠 ?꾩슂?⑸땲??" },
+        { error: "로그인이 필요합니다." },
         { status: 401 }
       );
     }
@@ -144,7 +144,7 @@ export async function DELETE(request: Request) {
 
     if (!subscription) {
       return NextResponse.json(
-        { error: "?쒖꽦 援щ룆???놁뒿?덈떎." },
+        { error: "활성 구독이 없습니다." },
         { status: 404 }
       );
     }
@@ -161,15 +161,14 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "援щ룆???댁? ?덉젙?쇰줈 ?ㅼ젙?섏뿀?듬땲?? ?꾩옱 湲곌컙 醫낅즺 ???먮룞 ?댁??⑸땲??",
+      message: "구독이 해지 예정으로 설정되었습니다. 현재 기간 종료 시 자동 해지됩니다.",
       subscription: updated,
     });
   } catch (error) {
     console.error("Cancel subscription error:", error);
     return NextResponse.json(
-      { error: "援щ룆 ?댁? 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "구독 해지 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
 }
-

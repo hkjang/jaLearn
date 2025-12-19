@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // Generate coupon code
 function generateCouponCode(length = 8): string {
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "沅뚰븳???놁뒿?덈떎." },
+        { error: "권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Get coupons error:", error);
     return NextResponse.json(
-      { error: "荑좏룿 紐⑸줉 議고쉶 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "쿠폰 목록 조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "沅뚰븳???놁뒿?덈떎." },
+        { error: "권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "?대? 議댁옱?섎뒗 荑좏룿 肄붾뱶?낅땲??" },
+        { error: "이미 존재하는 쿠폰 코드입니다." },
         { status: 400 }
       );
     }
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Create coupon error:", error);
     return NextResponse.json(
-      { error: "荑좏룿 ?앹꽦 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "쿠폰 생성 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -130,7 +130,7 @@ export async function PUT(request: Request) {
     
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "沅뚰븳???놁뒿?덈떎." },
+        { error: "권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -140,7 +140,7 @@ export async function PUT(request: Request) {
 
     if (!id) {
       return NextResponse.json(
-        { error: "荑좏룿 ID媛 ?꾩슂?⑸땲??" },
+        { error: "쿠폰 ID가 필요합니다." },
         { status: 400 }
       );
     }
@@ -168,7 +168,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("Update coupon error:", error);
     return NextResponse.json(
-      { error: "荑좏룿 ?섏젙 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "쿠폰 수정 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -181,7 +181,7 @@ export async function DELETE(request: Request) {
     
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "沅뚰븳???놁뒿?덈떎." },
+        { error: "권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -191,7 +191,7 @@ export async function DELETE(request: Request) {
 
     if (!id) {
       return NextResponse.json(
-        { error: "荑좏룿 ID媛 ?꾩슂?⑸땲??" },
+        { error: "쿠폰 ID가 필요합니다." },
         { status: 400 }
       );
     }
@@ -203,14 +203,13 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "荑좏룿??鍮꾪솢?깊솕?섏뿀?듬땲??",
+      message: "쿠폰이 비활성화되었습니다.",
     });
   } catch (error) {
     console.error("Delete coupon error:", error);
     return NextResponse.json(
-      { error: "荑좏룿 ??젣 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." },
+      { error: "쿠폰 삭제 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
 }
-

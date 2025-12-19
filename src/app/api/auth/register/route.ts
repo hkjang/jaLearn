@@ -11,14 +11,14 @@ export async function POST(request: Request) {
     // Validation
     if (!name || !email || !password || !role) {
       return NextResponse.json(
-        { error: "?�수 ?�보�?모두 ?�력?�주?�요." },
+        { error: "필수 정보를 모두 입력해주세요." },
         { status: 400 }
       );
     }
 
     if (password.length < 8) {
       return NextResponse.json(
-        { error: "비�?번호??8???�상?�어???�니??" },
+        { error: "비밀번호는 8자 이상이어야 합니다." },
         { status: 400 }
       );
     }
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // Check if role is valid
     if (!isValidUserRole(role)) {
       return NextResponse.json(
-        { error: "?�효?��? ?��? ??��?�니??" },
+        { error: "유효하지 않은 역할입니다." },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // Check if grade level is valid for students
     if (role === "STUDENT" && gradeLevel && !isValidGradeLevel(gradeLevel)) {
       return NextResponse.json(
-        { error: "?�효?��? ?��? ?�년?�니??" },
+        { error: "유효하지 않은 학년입니다." },
         { status: 400 }
       );
     }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "?��? 가?�된 ?�메?�입?�다." },
+        { error: "이미 가입된 이메일입니다." },
         { status: 400 }
       );
     }
@@ -79,13 +79,13 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      message: "?�원가?�이 ?�료?�었?�니??",
+      message: "회원가입이 완료되었습니다.",
       user,
     });
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(
-      { error: "?�원가??�??�류가 발생?�습?�다." },
+      { error: "회원가입 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }

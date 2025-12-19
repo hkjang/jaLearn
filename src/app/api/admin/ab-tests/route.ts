@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // GET - List A/B tests
 export async function GET(request: Request) {
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "로그?�이 ?�요?�니??" }, { status: 401 });
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -18,33 +18,33 @@ export async function GET(request: Request) {
     });
 
     if (user?.role !== "ADMIN") {
-      return NextResponse.json({ error: "관리자 권한???�요?�니??" }, { status: 403 });
+      return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
     }
 
     // Mock A/B tests data
     const tests = [
       {
         id: "ab-001",
-        name: "?�크?�테??vs 직접 ?�명",
-        description: "?�크?�테?�식 질문�?직접 ?�명 방식 비교",
+        name: "소크라테스 vs 직접 설명",
+        description: "소크라테스식 질문과 직접 설명 방식 비교",
         status: "RUNNING",
         startDate: new Date(Date.now() - 7 * 86400000).toISOString(),
         variants: [
-          { id: "v1", name: "?�크?�테??, allocation: 0.5, metrics: { usageCount: 234, avgQualityScore: 0.85 } },
-          { id: "v2", name: "직접 ?�명", allocation: 0.5, metrics: { usageCount: 221, avgQualityScore: 0.78 } },
+          { id: "v1", name: "소크라테스", allocation: 0.5, metrics: { usageCount: 234, avgQualityScore: 0.85 } },
+          { id: "v2", name: "직접 설명", allocation: 0.5, metrics: { usageCount: 221, avgQualityScore: 0.78 } },
         ],
       },
       {
         id: "ab-002",
-        name: "?�모지 ?�용 ?��?",
-        description: "초등?�생 ?�???�모지 ?�용 ?�과 ?�스??,
+        name: "이모지 사용 여부",
+        description: "초등학생 대상 이모지 사용 효과 테스트",
         status: "COMPLETED",
         startDate: new Date(Date.now() - 30 * 86400000).toISOString(),
         endDate: new Date(Date.now() - 14 * 86400000).toISOString(),
         winnerVariantId: "v1",
         variants: [
-          { id: "v1", name: "?�모지 O", allocation: 0.5, metrics: { usageCount: 1500, avgQualityScore: 0.88 } },
-          { id: "v2", name: "?�모지 X", allocation: 0.5, metrics: { usageCount: 1480, avgQualityScore: 0.72 } },
+          { id: "v1", name: "이모지 O", allocation: 0.5, metrics: { usageCount: 1500, avgQualityScore: 0.88 } },
+          { id: "v2", name: "이모지 X", allocation: 0.5, metrics: { usageCount: 1480, avgQualityScore: 0.72 } },
         ],
       },
     ];
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ tests });
   } catch (error) {
     console.error("Get A/B tests error:", error);
-    return NextResponse.json({ error: "조회 �??�류가 발생?�습?�다." }, { status: 500 });
+    return NextResponse.json({ error: "조회 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "로그?�이 ?�요?�니??" }, { status: 401 });
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -71,14 +71,14 @@ export async function POST(request: Request) {
     });
 
     if (user?.role !== "ADMIN") {
-      return NextResponse.json({ error: "관리자 권한???�요?�니??" }, { status: 403 });
+      return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
     }
 
     const body = await request.json();
     const { name, description, variants, targetAudience } = body;
 
     if (!name || !variants || variants.length < 2) {
-      return NextResponse.json({ error: "?�스?�명�?2�??�상??변?�이 ?�요?�니??" }, { status: 400 });
+      return NextResponse.json({ error: "테스트명과 2개 이상의 변형이 필요합니다." }, { status: 400 });
     }
 
     const newTest = {
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, test: newTest });
   } catch (error) {
     console.error("Create A/B test error:", error);
-    return NextResponse.json({ error: "?�성 �??�류가 발생?�습?�다." }, { status: 500 });
+    return NextResponse.json({ error: "생성 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
 
@@ -110,7 +110,7 @@ export async function PUT(request: Request) {
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "로그?�이 ?�요?�니??" }, { status: 401 });
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -119,29 +119,29 @@ export async function PUT(request: Request) {
     });
 
     if (user?.role !== "ADMIN") {
-      return NextResponse.json({ error: "관리자 권한???�요?�니??" }, { status: 403 });
+      return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
     }
 
     const body = await request.json();
     const { testId, action } = body;
 
     if (!testId || !action) {
-      return NextResponse.json({ error: "?�스??ID?� ?�션???�요?�니??" }, { status: 400 });
+      return NextResponse.json({ error: "테스트 ID와 액션이 필요합니다." }, { status: 400 });
     }
 
     switch (action) {
       case "start":
-        return NextResponse.json({ success: true, message: "?�스?��? ?�작?�었?�니??", status: "RUNNING" });
+        return NextResponse.json({ success: true, message: "테스트가 시작되었습니다.", status: "RUNNING" });
       case "stop":
-        return NextResponse.json({ success: true, message: "?�스?��? 중단?�었?�니??", status: "STOPPED" });
+        return NextResponse.json({ success: true, message: "테스트가 중단되었습니다.", status: "STOPPED" });
       case "finish":
-        return NextResponse.json({ success: true, message: "?�스?��? ?�료?�었?�니??", status: "COMPLETED" });
+        return NextResponse.json({ success: true, message: "테스트가 완료되었습니다.", status: "COMPLETED" });
       default:
-        return NextResponse.json({ error: "?�효?��? ?��? ?�션?�니??" }, { status: 400 });
+        return NextResponse.json({ error: "유효하지 않은 액션입니다." }, { status: 400 });
     }
   } catch (error) {
     console.error("Update A/B test error:", error);
-    return NextResponse.json({ error: "?�데?�트 �??�류가 발생?�습?�다." }, { status: 500 });
+    return NextResponse.json({ error: "업데이트 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
 
@@ -151,7 +151,7 @@ export async function DELETE(request: Request) {
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "로그?�이 ?�요?�니??" }, { status: 401 });
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -160,19 +160,19 @@ export async function DELETE(request: Request) {
     });
 
     if (user?.role !== "ADMIN") {
-      return NextResponse.json({ error: "관리자 권한???�요?�니??" }, { status: 403 });
+      return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
     const testId = searchParams.get("testId");
 
     if (!testId) {
-      return NextResponse.json({ error: "?�스??ID가 ?�요?�니??" }, { status: 400 });
+      return NextResponse.json({ error: "테스트 ID가 필요합니다." }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: `?�스??${testId} ??��?? });
+    return NextResponse.json({ success: true, message: `테스트 ${testId} 삭제됨` });
   } catch (error) {
     console.error("Delete A/B test error:", error);
-    return NextResponse.json({ error: "??�� �??�류가 발생?�습?�다." }, { status: 500 });
+    return NextResponse.json({ error: "삭제 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
