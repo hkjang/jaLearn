@@ -107,6 +107,9 @@ model User {
   problemRatings    ProblemRating[]
   sharedQuestions   SharedQuestion[]
   questionAnswers   QuestionAnswer[]
+  
+  // Word Learning (단어 학습)
+  wordProgress      UserWordProgress[]
 }
 
 model Account {
@@ -201,6 +204,9 @@ model Subject {
   problemUnits        ProblemUnit[]
   problems            Problem[]
   curriculumStandards CurriculumStandard[]
+  
+  // Word Learning (단어 학습)
+  words               WordSubject[]
 }
 
 model Course {
@@ -885,6 +891,9 @@ model Problem {
   
   // Prompt Asset System
   problemPrompt ProblemPrompt?
+  
+  // Word Learning (단어 학습)
+  words         ProblemWord[]
   
   @@index([subjectId, gradeLevel])
   @@index([status, reviewStage])
@@ -1879,4 +1888,219 @@ model PromptApproval {
   @@index([status, stage])
   @@index([versionId])
   @@index([requesterId])
+}
+
+// ========================================
+// Word-Centric Learning Models (단어 중심 학습)
+// ========================================
+
+// 단어 마스터 테이블
+model Word {
+  id            String   @id @default(cuid())
+  
+  // 기본 정보
+  term          String           // 단어/용어
+  pronunciation String?          // 발음 (영어, 한자 등)
+  termType      String           // VOCABULARY, CONCEPT, SYMBOL, TERM, THEORY, MODEL
+  
+  // 분류
+  gradeLevel    String           // ELEMENTARY_1-6, MIDDLE_1-3, HIGH_1-3
+  
+  // 기본 정의
+  definition    String           // 교과서 기반 정식 정의
+  simpleDefinition String?       // 쉬운 설명 (학년별 재서술)
+  
+  // 미디어
+  imageUrl      String?          // 관련 이미지
+  audioUrl      String?          // TTS 음성 파일
+  
+  // 품질 & 상태
+  isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  
+  // 통계
+  usageCount    Int      @default(0)
+  correctRate   Float?
+  
+  // 관계
+  subjects      WordSubject[]
+  definitions   WordDefinition[]
+  examples      WordExample[]
+  relatedWords  WordRelation[]   @relation("SourceWord")
+  relatingWords WordRelation[]   @relation("TargetWord")
+  problemWords  ProblemWord[]
+  userProgress  UserWordProgress[]
+  quizResults   WordQuizResult[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([term, gradeLevel])
+  @@index([termType])
+  @@index([gradeLevel])
+  @@index([term])
+}
+
+// 과목별 단어 매핑 (다중 과목 가능)
+model WordSubject {
+  id        String  @id @default(cuid())
+  wordId    String
+  subjectId String
+  category  String? // 과목 내 카테고리 (예: 문법, 어휘)
+  
+  word      Word    @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  
+  @@unique([wordId, subjectId])
+}
+
+// 학년별 맞춤 정의
+model WordDefinition {
+  id            String @id @default(cuid())
+  wordId        String
+  gradeLevel    String // 타겟 학년
+  definition    String // 학년 맞춤 정의
+  metaphor      String? // 비유 설명
+  
+  word          Word   @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  
+  @@unique([wordId, gradeLevel])
+}
+
+// 예문 (문제 연계)
+model WordExample {
+  id            String  @id @default(cuid())
+  wordId        String
+  sentence      String  // 예문
+  source        String? // 출처 (교과서, 문제 등)
+  problemId     String? // 연결된 문제 ID
+  highlightRange String? // JSON: 단어 위치 [start, end]
+  
+  word          Word    @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  
+  @@index([wordId])
+}
+
+// 단어 관계 (반대어, 유사어, 상위어 등)
+model WordRelation {
+  id            String @id @default(cuid())
+  sourceWordId  String
+  targetWordId  String
+  relationType  String // SYNONYM, ANTONYM, HYPERNYM, HYPONYM, RELATED
+  
+  sourceWord    Word   @relation("SourceWord", fields: [sourceWordId], references: [id], onDelete: Cascade)
+  targetWord    Word   @relation("TargetWord", fields: [targetWordId], references: [id], onDelete: Cascade)
+  
+  @@unique([sourceWordId, targetWordId, relationType])
+}
+
+// 문제-단어 연결
+model ProblemWord {
+  id            String  @id @default(cuid())
+  problemId     String
+  wordId        String
+  position      String? // JSON: 문제 내 단어 위치
+  isKeyWord     Boolean @default(false) // 핵심 단어 여부
+  
+  problem       Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  word          Word    @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  
+  @@unique([problemId, wordId])
+  @@index([problemId])
+  @@index([wordId])
+}
+
+// 사용자별 단어 학습 진행도
+model UserWordProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  wordId          String
+  
+  // 학습 상태
+  masteryLevel    Int      @default(0) // 0-5 숙달도
+  repetitionCount Int      @default(0) // 반복 횟수
+  correctCount    Int      @default(0)
+  incorrectCount  Int      @default(0)
+  
+  // 스페이스드 반복 (망각 곡선)
+  easeFactor      Float    @default(2.5) // SM-2 이즈 팩터
+  interval        Int      @default(1)   // 다음 복습까지 일수
+  nextReviewDate  DateTime @default(now())
+  
+  // 기록
+  isFavorite      Boolean  @default(false) // 즐겨찾기
+  isWeak          Boolean  @default(false) // 취약 단어
+  lastStudiedAt   DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word            Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, wordId])
+  @@index([userId, isWeak])
+  @@index([userId, nextReviewDate])
+  @@index([userId, isFavorite])
+}
+
+// 단어 퀴즈 결과
+model WordQuizResult {
+  id            String   @id @default(cuid())
+  userId        String
+  wordId        String
+  quizType      String   // DEFINITION, EXAMPLE, RELATION, LISTENING
+  isCorrect     Boolean
+  timeSpent     Int?     // 초
+  userAnswer    String?
+  
+  word          Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId, wordId])
+  @@index([userId, createdAt])
+}
+
+// 학부모/교사용 단어 리포트
+model WordReport {
+  id            String   @id @default(cuid())
+  userId        String   // 대상 학생
+  reporterId    String   // 학부모/교사
+  period        String   // DAILY, WEEKLY, MONTHLY
+  periodKey     String   // e.g., "2024-01-15"
+  
+  // 통계
+  totalWords       Int   @default(0)
+  masteredWords    Int   @default(0)
+  weakWords        Int   @default(0)
+  newWordsLearned  Int   @default(0)
+  quizzesTaken     Int   @default(0)
+  avgAccuracy      Float?
+  
+  // 과목별 통계
+  subjectStats  String?  // JSON: { subjectId: { count, mastered, weak } }
+  
+  // 추천
+  recommendedWords String? // JSON: 다음 학습 추천 단어 ID 배열
+  aiComment     String?   // AI 생성 코멘트
+  
+  // 비교
+  gradeAvgMastery Float?  // 학년 평균 대비
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([userId, reporterId, period, periodKey])
+  @@index([userId, period])
+}
+
+// AI 단어 추출 로그
+model WordExtractionLog {
+  id            String   @id @default(cuid())
+  sourceType    String   // PROBLEM, TEXTBOOK, EXPLANATION, USER_QUESTION
+  sourceId      String?
+  extractedWords String  // JSON: 추출된 단어 배열
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([status])
+  @@index([sourceType])
 }
