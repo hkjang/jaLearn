@@ -5,6 +5,7 @@
  */
 
 import { prisma } from './prisma';
+import { Prisma } from '@prisma/client';
 
 // ========================================
 // Types
@@ -70,7 +71,7 @@ export async function getWords(
     sortOrder = 'asc',
   } = pagination;
 
-  const where: Parameters<typeof prisma.word.findMany>[0]['where'] = {
+  const where: Prisma.WordWhereInput = {
     isActive,
     ...(gradeLevel && { gradeLevel }),
     ...(termType && { termType }),
