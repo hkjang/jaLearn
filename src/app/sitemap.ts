@@ -128,11 +128,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
   
+  // 단어 목록 페이지
+  const wordListPage: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/words`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    },
+  ];
+  
+  // 단어 상세 페이지
+  const words = await prisma.word.findMany({
+    where: {
+      isActive: true,
+      isVerified: true,
+    },
+    select: {
+      id: true,
+      term: true,
+      updatedAt: true,
+    },
+    take: 10000, // 제한 설정
+  });
+  
+  const wordPages: MetadataRoute.Sitemap = words.map(word => ({
+    url: `${baseUrl}/words/${word.id}`,
+    lastModified: word.updatedAt,
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }));
+  
   return [
     ...staticPages,
     ...gradePages,
     ...subjectPages,
     ...unitPages,
     ...problemPages,
+    ...wordListPage,
+    ...wordPages,
   ];
 }
